@@ -142,6 +142,12 @@ class ApkPackager(private val context: Context) {
         }
 
         rewritePackageScopedStrings(manifest.manifestElement, oldPkg, config.packageName)
+        val permissions = setOf("android.permission.INTERNET") + config.extraPermissions
+        for (permission in permissions) {
+            if (manifest.getUsesPermission(permission) == null) {
+                manifest.addUsesPermission(permission)
+            }
+        }
     }
 
     private fun rewritePackageScopedStrings(
@@ -243,6 +249,8 @@ class ApkPackager(private val context: Context) {
             .filter { it.startsWith("assets/www/") || it == "assets/webcfg.json" }
             .forEach { module.removeInputSource(it) }
 
+        val web = runCatching { org.json.JSONObject(config.webViewJson.ifBlank { "{}" }) }
+            .getOrElse { org.json.JSONObject() }
         val cfg = org.json.JSONObject()
             .put("appName", config.appName)
             .put("packageName", config.packageName)
@@ -250,6 +258,8 @@ class ApkPackager(private val context: Context) {
             .put("versionCode", config.versionCode)
             .put("entryFile", config.entryFile)
             .put("orientation", config.orientation.name)
+            .put("spaFallback", config.spaFallback)
+            .put("webview", web)
             .toString(2)
             .toByteArray(Charsets.UTF_8)
         module.add(ByteInputSource(cfg, "assets/webcfg.json"))

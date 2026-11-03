@@ -6,7 +6,8 @@ An Android IDE for HTML, CSS, and JavaScript. Edit files on the phone, preview t
 
 ## What it does
 
-- Edit the files under a project’s `src/` directory. A new install seeds `index.html`, `styles.css`, and `main.js`.
+- Keep several projects. Start one from a template (blank, multi-page, React, Vue) or import a file, archive, or folder. Each project's files live under its `src/` directory.
+- Preview runs on a local HTTP server with live reload. It can also be opened from other devices on the same network.
 - Split the screen between the editor and the preview, and drag the hinge to change the ratio.
 - **运行** saves and reloads the preview.
 - **打包** injects `src/` into a WebView shell as `assets/www/`, writes `assets/webcfg.json`, signs the APK, and opens the installer.

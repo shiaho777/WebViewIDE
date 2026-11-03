@@ -1,0 +1,12 @@
+:root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f4f7fb; color: #1a1c1e; }
+main { width: min(100% - 32px, 420px); }
+.mark { margin: 0; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #185fa5; }
+h1 { font-size: 32px; line-height: 1.2; margin: 8px 0; }
+p { line-height: 1.5; }
+button { margin-top: 8px; border: 0; border-radius: 999px; padding: 12px 20px; background: #185fa5; color: white; font: inherit; }
+@media (prefers-color-scheme: dark) {
+  body { background: #1a1c1e; color: #e3e2e6; }
+  .mark { color: #a2c9ff; }
+  button { background: #a2c9ff; color: #003258; }
+}

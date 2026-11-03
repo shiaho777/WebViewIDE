@@ -4,7 +4,7 @@ Android IDE for HTML, CSS, and JavaScript. Edit a project, preview it in the sys
 
 ## Layout
 
-- `app/` — the IDE (Kotlin, Jetpack Compose, package `dev.webviewide`). Preview uses `androidx.webkit.WebViewAssetLoader` against the project `src/` directory.
+- `app/` — the IDE (Kotlin, Jetpack Compose, package `dev.webviewide`). Preview loads the project's serve directory (`src/`, or `src/<serveRoot>`) from `LocalPreviewServer` (`app/src/main/java/dev/webviewide/server/`), a small HTTP server on localhost, optionally reachable over LAN, with live reload.
 - `runtime/` — the packaged app. A single `RuntimeActivity` loads `assets/www/` plus `assets/webcfg.json`. Its release APK is copied to `app/src/main/assets/runtime/template.apk` by the `syncRuntimeTemplate` Gradle task. `*.apk` is gitignored; CI generates the template.
 - Packaging rewrites that template with ARSCLib and apksig (`app/src/main/java/dev/webviewide/build/`).
 
