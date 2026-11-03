@@ -18,6 +18,7 @@ import dev.webviewide.build.BuildConfig
 import dev.webviewide.build.DebugKeystore
 import dev.webviewide.build.Orientation
 import dev.webviewide.project.DocumentImport
+import dev.webviewide.project.DraftSaver
 import dev.webviewide.project.ProjectIds
 import dev.webviewide.project.ProjectStore
 import dev.webviewide.project.WebProject
@@ -51,7 +52,9 @@ class IdeSession(
     val server = LocalPreviewServer()
     private var saveJob: Job? = null
     private var serverJob: Job? = null
-    private var dirty = false
+    private val saver = DraftSaver()
+    private var version = 0L
+    private val dirty: Boolean get() = !saver.isSaved(version)
     private var lastProjectId: String? = null
     private var liveWeb: WeakReference<WebView>? = null
 
@@ -169,31 +172,29 @@ class IdeSession(
 
     fun edit(text: String) {
         draft = text
-        scheduleSave(cancelPrevious = true)
+        version += 1
+        scheduleSave()
     }
 
-    private fun scheduleSave(cancelPrevious: Boolean) {
-        dirty = true
-        val previous = saveJob
-        val job = scope.launch {
+    private fun scheduleSave() {
+        saveJob?.cancel()
+        saveJob = scope.launch {
             delay(350)
             val file = current ?: return@launch
             val open = project ?: return@launch
             val snapshot = draft
-            if (!dirty) return@launch
-            dirty = false
-            val served = withContext(Dispatchers.IO) {
-                ProjectStore.write(file, snapshot)
-                SiteFiles.isInside(open.serveDir, file)
+            val saving = version
+            if (saver.isSaved(saving)) return@launch
+            val outcome = withContext(Dispatchers.IO) {
+                runCatching {
+                    saver.save(file, snapshot, saving) && SiteFiles.isInside(open.serveDir, file)
+                }
             }
-            if (draft != snapshot) {
-                scheduleSave(cancelPrevious = false)
-                return@launch
-            }
-            if (served && open.liveReload) server.reload()
+            outcome.fold(
+                onSuccess = { served -> if (served && open.liveReload) server.reload() },
+                onFailure = { status = it.message ?: "没能保存" },
+            )
         }
-        saveJob = job
-        if (cancelPrevious && previous != null && previous != job) previous.cancel()
     }
 
     fun runPreview() {
@@ -203,17 +204,16 @@ class IdeSession(
     }
 
     fun select(file: File) {
-        val previous = current
-        val snapshot = draft
-        val wasDirty = dirty
-        dirty = false
+        flushBlocking()
+        load(file)
+    }
+
+    private fun load(file: File?) {
         saveJob?.cancel()
         current = file
-        draft = readFile(file)
-        reveal(file)
-        if (wasDirty && previous != null) {
-            scope.launch(Dispatchers.IO) { ProjectStore.write(previous, snapshot) }
-        }
+        draft = file?.let { readFile(it) }.orEmpty()
+        saver.discardThrough(version)
+        if (file != null) reveal(file)
     }
 
     fun createFile(relative: String) {
@@ -226,7 +226,11 @@ class IdeSession(
             status = "已经有这个文件"
             return
         }
-        scope.launch(Dispatchers.IO) { ProjectStore.write(file, "") }
+        val created = runCatching { ProjectStore.write(file, "") }
+        if (created.isFailure) {
+            status = created.exceptionOrNull()?.message ?: "没能新建"
+            return
+        }
         treeTick += 1
         select(file)
     }
@@ -234,28 +238,38 @@ class IdeSession(
     fun renameFile(relative: String, nextName: String) {
         val open = project ?: return
         val file = resolve(open, relative) ?: return
-        val target = File(file.parentFile, nextName.trim())
         if (nextName.isBlank() || nextName.contains('/') || nextName.contains('\\')) {
             status = "名字里不能带路径"
             return
+        }
+        val target = File(file.parentFile, nextName.trim())
+        if (target.exists()) {
+            status = "已经有这个名字"
+            return
+        }
+        flushBlocking()
+        val moved = current?.takeIf { SiteFiles.isInside(file, it) }?.let {
+            if (it == file) target else File(target, it.toRelativeString(file))
         }
         if (!file.renameTo(target)) {
             status = "没能改名"
             return
         }
         treeTick += 1
-        if (current == file) select(target)
+        if (moved != null) load(moved)
     }
 
     fun deleteFile(relative: String) {
         val open = project ?: return
         val file = resolve(open, relative) ?: return
+        val removesCurrent = current?.let { SiteFiles.isInside(file, it) } == true
+        if (removesCurrent) {
+            saveJob?.cancel()
+            saver.discardThrough(version)
+        }
         file.deleteRecursively()
         treeTick += 1
-        if (current?.path?.startsWith(file.path) == true) {
-            current = null
-            draft = ""
-        }
+        if (removesCurrent) load(null)
     }
 
     fun importIcon(uri: Uri) {
@@ -291,17 +305,16 @@ class IdeSession(
         if (busy) return
         val file = current
         val snapshot = draft
-        val wasDirty = dirty
-        dirty = false
+        val saving = version
         saveJob?.cancel()
         busy = true
         status = "正在打包"
         scope.launch {
             val outcome = withContext(Dispatchers.IO) {
                 runCatching {
-                    if (wasDirty && file != null) ProjectStore.write(file, snapshot)
+                    if (file != null) saver.save(file, snapshot, saving)
                     val fresh = project ?: open
-                    val out = File(File(fresh.dir, "builds").apply { mkdirs() }, "${fresh.id}.apk")
+                    val out = File(File(app.cacheDir, "builds").apply { mkdirs() }, "${fresh.id}.apk")
                     ApkPackager(app).packageApk(
                         config = BuildConfig(
                             appName = fresh.name,
@@ -384,7 +397,7 @@ class IdeSession(
         val file = if (entry.isFile) entry else ProjectStore.listUnder(next.srcDir).firstOrNull()
         current = file
         draft = file?.let { readFile(it) }.orEmpty()
-        dirty = false
+        saver.discardThrough(version)
         if (file != null) reveal(file)
         status = next.summary
         restartServer()
@@ -430,10 +443,10 @@ class IdeSession(
     private fun flushBlocking() {
         saveJob?.cancel()
         val file = current ?: return
-        val snapshot = draft
         if (!dirty) return
-        dirty = false
-        scope.launch(Dispatchers.IO) { ProjectStore.write(file, snapshot) }
+        runCatching { saver.save(file, draft, version) }.onFailure {
+            status = it.message ?: "没能保存"
+        }
     }
 
     private fun readFile(file: File): String {
