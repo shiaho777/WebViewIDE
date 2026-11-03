@@ -20,6 +20,9 @@ data class BuildConfig(
     val iconOffsetY: Float = 0f,
     val iconSafeZone: Float = 0.66f,
     val iconCorner: Float = 0.22f,
+    val spaFallback: Boolean = false,
+    val webViewJson: String = "{}",
+    val extraPermissions: Set<String> = emptySet(),
     val schema: Int = SCHEMA_VERSION,
 ) {
     fun iconTransform() = IconTransform(

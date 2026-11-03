@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vue</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <main>
+      <p class="mark">Vue</p>
+      <h1>{{ title }}</h1>
+      <p>这一页带着 Vue，改完就能在预览里看到。</p>
+      <button type="button" @click="count++">点过 {{ count }} 次</button>
+    </main>
+  </div>
+  <script src="vue.global.prod.js"></script>
+  <script>
+    Vue.createApp({
+      data: () => ({ title: "写在手机上的 Vue", count: 0 }),
+    }).mount("#app");
+  </script>
+</body>
+</html>
