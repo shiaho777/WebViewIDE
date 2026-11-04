@@ -8,6 +8,9 @@ import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,15 +19,33 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.Terminal
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Surface
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -38,6 +59,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
@@ -45,13 +67,15 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.webkit.ProfileStore
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
+import dev.webviewide.R
 import dev.webviewide.project.WebViewConfig
+import dev.webviewide.ui.theme.AppMotion
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private const val STAMP = 0x70_02
+private val viewports = listOf(0 to "满宽", 320 to "320", 390 to "390", 768 to "768")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -137,15 +161,68 @@ fun WebPreview(
     }
 
     Column(modifier) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
-            listOf(0 to "满宽", 320 to "320", 390 to "390", 768 to "768").forEach { (width, label) ->
-                FilterChip(selected = viewport == width, onClick = { viewport = width }, label = { Text(label) })
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box {
+                var widthMenu by remember { mutableStateOf(false) }
+                FilledTonalButton(
+                    onClick = { widthMenu = true },
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                ) {
+                    Text(viewports.firstOrNull { it.first == viewport }?.second ?: "满宽")
+                    Icon(Icons.Outlined.ExpandMore, contentDescription = null, modifier = Modifier.padding(start = 4.dp))
+                }
+                DropdownMenu(expanded = widthMenu, onDismissRequest = { widthMenu = false }) {
+                    viewports.forEach { (width, label) ->
+                        DropdownMenuItem(
+                            text = { Text(label) },
+                            leadingIcon = {
+                                if (width == viewport) {
+                                    Icon(Icons.Outlined.Check, contentDescription = null)
+                                }
+                            },
+                            onClick = {
+                                viewport = width
+                                widthMenu = false
+                            },
+                        )
+                    }
+                }
             }
-            TextButton(onClick = { showConsole = true }) { Text("控制台") }
+            Spacer(Modifier.weight(1f))
+            FilledTonalIconButton(onClick = { showConsole = true }) {
+                Icon(Icons.Outlined.Terminal, contentDescription = "控制台")
+            }
         }
-        if (progress in 1..99) LinearProgressIndicator(progress = { progress / 100f }, modifier = Modifier.fillMaxWidth())
+        AnimatedVisibility(
+            visible = progress in 1..99,
+            enter = fadeIn(animationSpec = AppMotion.effects()),
+            exit = fadeOut(animationSpec = AppMotion.effectsFast()),
+        ) {
+            LinearProgressIndicator(progress = { progress / 100f }, modifier = Modifier.fillMaxWidth())
+        }
         if (url.isNullOrBlank()) {
-            Text("预览还没准备好", modifier = Modifier.padding(16.dp))
+            Column(
+                Modifier.weight(1f).fillMaxWidth().padding(32.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Icon(
+                    Icons.Outlined.Language,
+                    contentDescription = null,
+                    modifier = Modifier.size(40.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    "预览还没准备好",
+                    modifier = Modifier.padding(top = 12.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         } else {
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
             AndroidView(
@@ -184,8 +261,8 @@ fun WebPreview(
                 update = { web ->
                     applyWebSettings(web, config)
                     val stamp = "$url#$reloadKey#${config.encode()}"
-                    if (web.getTag(STAMP) != stamp) {
-                        web.setTag(STAMP, stamp)
+                    if (web.getTag(R.id.preview_load_stamp) != stamp) {
+                        web.setTag(R.id.preview_load_stamp, stamp)
                         web.loadUrl(url)
                     }
                 },
@@ -201,13 +278,36 @@ fun WebPreview(
 
     if (showConsole) {
         ModalBottomSheet(onDismissRequest = { showConsole = false }) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("控制台")
+            Row(
+                Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, bottom = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("控制台", style = MaterialTheme.typography.titleLarge)
                 TextButton(onClick = { console = emptyList() }) { Text("清空") }
             }
-            LazyColumn(Modifier.heightIn(min = 120.dp, max = 420.dp).padding(horizontal = 16.dp, vertical = 8.dp)) {
-                if (console.isEmpty()) item { Text("还没有输出") }
-                items(console) { line -> Text(line) }
+            Surface(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 24.dp),
+                shape = MaterialTheme.shapes.medium,
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+            ) {
+                LazyColumn(Modifier.heightIn(min = 120.dp, max = 420.dp).padding(12.dp)) {
+                    if (console.isEmpty()) {
+                        item {
+                            Text(
+                                "还没有输出",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    items(console) { line ->
+                        Text(
+                            line,
+                            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                        )
+                    }
+                }
             }
         }
     }

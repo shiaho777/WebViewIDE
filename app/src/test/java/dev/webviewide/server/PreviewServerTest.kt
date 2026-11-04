@@ -77,6 +77,51 @@ class PreviewServerTest {
         }
     }
 
+    @Test fun liveReloadScriptDoesNotCorruptUtf8Pages() {
+        val root = createTempDirectory("reload").toFile()
+        val server = LocalPreviewServer()
+        try {
+            val html = "<!doctype html><html><body><button>点过 0 次</button></body></html>"
+            File(root, "index.html").writeText(html)
+            server.root = root
+            server.liveReload = true
+            server.entryFile = "index.html"
+            val port = server.start(4199, false)
+            val text = awaitGetBytes(port, "/index.html").toString(Charsets.UTF_8)
+            assertTrue(text.contains("<button>点过 0 次</button>"))
+            assertTrue(text.contains("data-webviewide=\"reload\""))
+            val scriptAt = text.indexOf("<script data-webviewide")
+            assertTrue(scriptAt > text.indexOf("<button>"))
+            assertTrue(text.indexOf("</body>") > scriptAt)
+            assertTrue(text.endsWith("</html>"))
+        } finally {
+            server.stop()
+            root.deleteRecursively()
+        }
+    }
+
+    private fun awaitGetBytes(port: Int, path: String): ByteArray {
+        var last: Exception? = null
+        repeat(20) {
+            try {
+                Socket("127.0.0.1", port).use { socket ->
+                    socket.soTimeout = 2000
+                    socket.getOutputStream().apply {
+                        write("GET $path HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n".toByteArray())
+                        flush()
+                    }
+                    val raw = socket.getInputStream().readBytes()
+                    val split = String(raw, Charsets.ISO_8859_1).indexOf("\r\n\r\n")
+                    return raw.copyOfRange(split + 4, raw.size)
+                }
+            } catch (error: Exception) {
+                last = error
+                Thread.sleep(25)
+            }
+        }
+        throw last ?: IllegalStateException("no response")
+    }
+
     private fun awaitGet(port: Int, path: String): Triple<Int, String, String> {
         var last: Exception? = null
         repeat(20) {
