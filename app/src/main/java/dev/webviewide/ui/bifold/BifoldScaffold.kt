@@ -1,8 +1,12 @@
 package dev.webviewide.ui.bifold
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -11,6 +15,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,8 +38,10 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -73,6 +80,11 @@ fun BifoldScaffold(
     var fromFrac by remember { mutableFloatStateOf(state.ratio) }
     var toFrac by remember { mutableFloatStateOf(state.ratio) }
     var releaseVelocity by remember { mutableFloatStateOf(0f) }
+    // True from the moment a pane spring starts until it settles or is
+    // cancelled. While true the faces are measured at the wider endpoint so
+    // the spring does not remeasure them each frame; the flag flipping back
+    // to false forces one last layout at the exact slot width.
+    var animating by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     val hingePx = with(density) { HingeWidth.toPx() }
@@ -97,14 +109,27 @@ fun BifoldScaffold(
         if (start != target) {
             fromFrac = start
             toFrac = target
+            animating = true
             // Reflow the wider pane once while the slot is still at rest, then move.
             withFrameNanos { }
-            ratioAnim.animateTo(target, Motion.paneRatio, initialVelocity = velocity)
+            try {
+                ratioAnim.animateTo(target, Motion.pane(), initialVelocity = velocity)
+            } finally {
+                // Cancellation (a new mode or a drag) must still drop back to
+                // measuring at the real slot width, or the face stays wide.
+                animating = false
+                val settled = ratioAnim.value
+                ratioAnim.snapTo(settled)
+                fromFrac = settled
+                toFrac = settled
+                state.ratio = settled
+            }
+        } else {
+            ratioAnim.snapTo(target)
+            fromFrac = target
+            toFrac = target
+            state.ratio = target
         }
-        ratioAnim.snapTo(target)
-        fromFrac = target
-        toFrac = target
-        state.ratio = target
     }
 
     // Compose the hidden face only once the spring has settled, so a blink in
@@ -124,8 +149,11 @@ fun BifoldScaffold(
                         slotPx = { bifoldSpanPx(ratioAnim.value, totalPx, hingePx).code },
                         measurePx = {
                             val slot = bifoldSpanPx(ratioAnim.value, totalPx, hingePx).code
-                            if (dragging) slot
-                            else max(bifoldMeasureSpans(fromFrac, toFrac, totalPx, hingePx).code.roundToInt(), slot)
+                            if (dragging || animating) {
+                                max(bifoldMeasureSpans(fromFrac, toFrac, totalPx, hingePx).code.roundToInt(), slot)
+                            } else {
+                                slot
+                            }
                         },
                         // The gutter stays on the left edge; the slot clips the rest.
                         childX = { _, _ -> 0 },
@@ -145,8 +173,11 @@ fun BifoldScaffold(
                         slotPx = { bifoldSpanPx(ratioAnim.value, totalPx, hingePx).preview },
                         measurePx = {
                             val slot = bifoldSpanPx(ratioAnim.value, totalPx, hingePx).preview
-                            if (dragging) slot
-                            else max(bifoldMeasureSpans(fromFrac, toFrac, totalPx, hingePx).preview.roundToInt(), slot)
+                            if (dragging || animating) {
+                                max(bifoldMeasureSpans(fromFrac, toFrac, totalPx, hingePx).preview.roundToInt(), slot)
+                            } else {
+                                slot
+                            }
                         },
                         childX = { slot, measured -> bifoldPreviewOffsetPx(slot, measured) },
                         alpha = { bifoldPreviewAlpha(ratioAnim.value) },
@@ -248,54 +279,86 @@ private fun Hinge(
     modifier: Modifier = Modifier,
 ) {
     val cs = MaterialTheme.colorScheme
+    val haptic = LocalHapticFeedback.current
+    var active by remember { mutableStateOf(false) }
     val drag by rememberUpdatedState(onDrag)
     val end by rememberUpdatedState(onDragEnd)
     fun edge(): Float = abs((progress() - 0.5f) * 2f).coerceIn(0f, 1f)
-    Surface(
-        color = cs.surfaceVariant,
-        modifier = modifier
+
+    val gripWidth by animateDpAsState(
+        if (active) 9.dp else 5.dp,
+        animationSpec = Motion.pane(),
+        label = "gripWidth",
+    )
+    val gripHeight by animateDpAsState(
+        if (active) 68.dp else 44.dp,
+        animationSpec = Motion.pane(),
+        label = "gripHeight",
+    )
+    val gripColor by animateColorAsState(
+        if (active) cs.primary else cs.primary.copy(alpha = 0.8f),
+        animationSpec = Motion.fade(),
+        label = "gripColor",
+    )
+    val dotAlpha by animateFloatAsState(
+        if (active) 1f else 0.6f + 0.4f * (1f - edge()),
+        animationSpec = Motion.fade(),
+        label = "gripDots",
+    )
+
+    Box(
+        modifier
             .fillMaxSize()
             .graphicsLayer { alpha = 0.55f + 0.45f * (1f - edge() * 0.65f) }
             .pointerInput(Unit) {
                 val tracker = VelocityTracker()
                 detectHorizontalDragGestures(
-                    onDragStart = { tracker.resetTracking() },
-                    onDragEnd = { end(tracker.calculateVelocity().x) },
-                    onDragCancel = { end(0f) },
+                    onDragStart = {
+                        active = true
+                        tracker.resetTracking()
+                        haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                    },
+                    onDragEnd = {
+                        active = false
+                        end(tracker.calculateVelocity().x)
+                    },
+                    onDragCancel = {
+                        active = false
+                        end(0f)
+                    },
                     onHorizontalDrag = { change, dragAmount ->
                         tracker.addPosition(change.uptimeMillis, change.position)
                         drag(dragAmount)
                     },
                 )
             },
+        contentAlignment = Alignment.Center,
     ) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Box(
+            Modifier
+                .fillMaxHeight()
+                .width(1.dp)
+                .background(cs.outlineVariant.copy(alpha = 0.5f)),
+        )
+        Surface(
+            color = gripColor,
+            shape = RoundedCornerShape(50),
+            modifier = Modifier.size(gripWidth, gripHeight),
+        ) {
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(vertical = 28.dp)
-                    .graphicsLayer { alpha = 0.55f + 0.45f * (1f - edge()) },
+                Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.SpaceEvenly,
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                repeat(7) {
+                repeat(3) {
                     Box(
                         Modifier
-                            .size(3.dp)
+                            .size(2.5.dp)
                             .clip(CircleShape)
-                            .background(cs.outline),
+                            .background(cs.onPrimary.copy(alpha = dotAlpha)),
                     )
                 }
             }
-            Surface(
-                color = cs.primary,
-                shape = RoundedCornerShape(3.dp),
-                modifier = Modifier.layout { measurable, constraints ->
-                    val h = (40.dp + 16.dp * (1f - edge())).roundToPx()
-                    val w = 5.dp.roundToPx()
-                    val placeable = measurable.measure(Constraints.fixed(w, h))
-                    layout(w, h) { placeable.place(0, 0) }
-                },
-            ) {}
         }
     }
 }

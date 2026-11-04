@@ -110,16 +110,17 @@ class LocalPreviewServer {
     private fun serveFile(client: Socket, hit: SiteHit.FileHit, headOnly: Boolean, range: LongRange?) {
         var bytes = hit.file.readBytes()
         if (hit.html && liveReload && !bytes.decodeToString().contains("data-webviewide=\"reload\"")) {
-            val script = RELOAD_SCRIPT.toByteArray()
-            val text = bytes
-            val lower = text.decodeToString().lowercase()
-            val marker = "</body>"
-            val at = lower.lastIndexOf(marker)
-            bytes = if (at >= 0) {
-                text.copyOfRange(0, at) + script + text.copyOfRange(at, text.size)
+            // Work on the decoded text: a character index is not a byte index
+            // for UTF-8 pages, and slicing the byte array by character position
+            // corrupts any non-ASCII document.
+            val text = bytes.decodeToString()
+            val at = text.lowercase().lastIndexOf("</body>")
+            val injected = if (at >= 0) {
+                text.substring(0, at) + RELOAD_SCRIPT + text.substring(at)
             } else {
-                text + script
+                text + RELOAD_SCRIPT
             }
+            bytes = injected.toByteArray(Charsets.UTF_8)
         }
         val mime = SiteFiles.mime(hit.file.name)
         val total = bytes.size.toLong()

@@ -8,7 +8,15 @@ import androidx.compose.ui.unit.sp
 
 private val mono = FontFamily.Monospace
 
-val Typography = Typography()
+private val base = Typography()
+
+val Typography = base.copy(
+    headlineSmall = base.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
+    titleLarge = base.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+    titleMedium = base.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+    titleSmall = base.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+    labelLarge = base.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+)
 
 val CodeTextStyle = TextStyle(
     fontFamily = mono,

@@ -6,9 +6,8 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
+import dev.webviewide.R
 import dev.webviewide.project.WebViewConfig
-
-private const val DEFAULT_UA = 0x70_01
 
 fun applyWebSettings(web: WebView, config: WebViewConfig) {
     val settings = web.settings
@@ -40,8 +39,8 @@ fun applyWebSettings(web: WebView, config: WebViewConfig) {
         WebViewConfig.MIXED_NEVER -> WebSettings.MIXED_CONTENT_NEVER_ALLOW
         else -> WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
     }
-    if (web.getTag(DEFAULT_UA) == null) web.setTag(DEFAULT_UA, settings.userAgentString)
-    val fallback = web.getTag(DEFAULT_UA) as? String
+    if (web.getTag(R.id.preview_default_user_agent) == null) web.setTag(R.id.preview_default_user_agent, settings.userAgentString)
+    val fallback = web.getTag(R.id.preview_default_user_agent) as? String
     settings.userAgentString = when (config.userAgent) {
         WebViewConfig.UA_DESKTOP -> WebViewConfig.DESKTOP_UA
         WebViewConfig.UA_CUSTOM -> config.customUserAgent.ifBlank { fallback }
