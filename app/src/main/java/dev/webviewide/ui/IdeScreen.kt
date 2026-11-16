@@ -94,6 +94,7 @@ import dev.webviewide.project.sourceKindFor
 import dev.webviewide.ui.bifold.BifoldMode
 import dev.webviewide.ui.bifold.BifoldScaffold
 import dev.webviewide.ui.bifold.rememberBifoldState
+import dev.webviewide.ui.editor.CmCodeEditor
 import dev.webviewide.ui.editor.CodeEditor
 import dev.webviewide.ui.editor.ImageFace
 import dev.webviewide.ui.theme.AppMotion
@@ -317,7 +318,14 @@ fun IdeScreen() {
                                                 onNew = { naming = NameAsk.NewFile },
                                             )
                                             isRasterImage(file.name) -> ImageFace(file)
-                                            else -> CodeEditor(
+                                            open.classicEditor -> CodeEditor(
+                                                path = runCatching { ProjectStore.relative(open, file) }
+                                                    .getOrDefault(file.name),
+                                                initial = session.draft,
+                                                kind = sourceKindFor(file.name),
+                                                onText = { session.edit(it) },
+                                            )
+                                            else -> CmCodeEditor(
                                                 path = runCatching { ProjectStore.relative(open, file) }
                                                     .getOrDefault(file.name),
                                                 initial = session.draft,

@@ -567,6 +567,7 @@ internal fun SettingsSheet(
                 }
                 ToggleRow("局域网也能打开", project.lan) { onProject(project.copy(lan = it), true) }
                 ToggleRow("改完马上刷新", project.liveReload) { onProject(project.copy(liveReload = it), true) }
+                ToggleRow("旧版编辑器（兼容模式）", project.classicEditor) { onProject(project.copy(classicEditor = it), false) }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilledTonalButton(
                         onClick = onCopy,
