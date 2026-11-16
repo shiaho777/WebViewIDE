@@ -388,7 +388,17 @@ internal fun ProjectSheet(
     var confirmDelete by remember { mutableStateOf(false) }
     val projects = remember(current?.id, current?.name, session.treeTick) { session.projects() }
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(Modifier.fillMaxWidth().imePadding().padding(horizontal = 20.dp).padding(bottom = 28.dp)) {
+        // The template list plus the current-project actions are taller than a
+        // phone sheet; without scrolling the share/export/delete row is
+        // unreachable.
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .imePadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 28.dp),
+        ) {
             Text("项目", style = MaterialTheme.typography.headlineSmall)
             Surface(
                 modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
