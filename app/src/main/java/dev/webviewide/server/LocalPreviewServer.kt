@@ -15,7 +15,9 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
-class LocalPreviewServer {
+class LocalPreviewServer(
+    private val clientScript: String? = null,
+) {
     @Volatile var root: File = File(".")
     @Volatile var spaFallback: Boolean = false
     @Volatile var liveReload: Boolean = true
@@ -63,8 +65,20 @@ class LocalPreviewServer {
         pool.shutdownNow()
     }
 
-    fun reload() {
-        val payload = "data: ${generation.incrementAndGet()}\n\n".toByteArray()
+    fun reload() = reload("", full = true)
+
+    /**
+     * Pushes a reload event. [path] is relative to [root]; a CSS-only change
+     * (full = false) lets the injected client hot-swap stylesheets without
+     * losing page state. Anything else triggers a state-preserving reload.
+     */
+    fun reload(path: String, full: Boolean) {
+        val gen = generation.incrementAndGet()
+        val kind = if (full) "full" else "css"
+        val data = dev.webviewide.project.encodeJson(
+            mapOf("gen" to gen, "kind" to kind, "path" to path),
+        )
+        val payload = "data: $data\n\n".toByteArray()
         val dead = mutableListOf<OutputStream>()
         for (stream in streams) {
             try {
@@ -114,11 +128,12 @@ class LocalPreviewServer {
             // for UTF-8 pages, and slicing the byte array by character position
             // corrupts any non-ASCII document.
             val text = bytes.decodeToString()
+            val script = reloadScript()
             val at = text.lowercase().lastIndexOf("</body>")
             val injected = if (at >= 0) {
-                text.substring(0, at) + RELOAD_SCRIPT + text.substring(at)
+                text.substring(0, at) + script + text.substring(at)
             } else {
-                text + RELOAD_SCRIPT
+                text + script
             }
             bytes = injected.toByteArray(Charsets.UTF_8)
         }
@@ -236,9 +251,14 @@ class LocalPreviewServer {
         Thread(runnable, "preview-http").apply { isDaemon = true }
     }
 
+    private fun reloadScript(): String {
+        val body = clientScript?.takeIf { it.isNotBlank() } ?: FALLBACK_CLIENT
+        return "<script data-webviewide=\"reload\">$body</script>"
+    }
+
     companion object {
-        private val RELOAD_SCRIPT =
-            """<script data-webviewide="reload">(function(){try{var es=new EventSource("/__webviewide/reload");es.onmessage=function(){location.reload()}}catch(e){}})();</script>"""
+        private const val FALLBACK_CLIENT =
+            """(function(){try{var es=new EventSource("/__webviewide/reload");es.onmessage=function(){location.reload()}}catch(e){}})();"""
 
         fun lanAddress(): String? = runCatching {
             NetworkInterface.getNetworkInterfaces().toList()

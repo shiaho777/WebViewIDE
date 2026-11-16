@@ -11,6 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,7 +41,6 @@ import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -77,6 +77,47 @@ import kotlinx.coroutines.withContext
 
 private val viewports = listOf(0 to "满宽", 320 to "320", 390 to "390", 768 to "768")
 
+@Composable
+private fun ConsoleRow(entry: ConsoleEntry, onOpenSource: (String, Int) -> Unit) {
+    val color = when (entry.level) {
+        "error" -> MaterialTheme.colorScheme.error
+        "warning" -> MaterialTheme.colorScheme.tertiary
+        else -> MaterialTheme.colorScheme.onSurface
+    }
+    val file = entry.source.substringAfterLast('/').substringBefore('?')
+    val remote = entry.source.startsWith("http://") || entry.source.startsWith("https://")
+    val local = !remote || entry.source.contains("127.0.0.1") || entry.source.contains("localhost")
+    val jumpable = entry.line > 0 && file.isNotBlank() && local
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .then(
+                if (jumpable) {
+                    Modifier.clickable { onOpenSource(file, entry.line) }
+                } else {
+                    Modifier
+                },
+            )
+            .padding(vertical = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text(
+            entry.level.uppercase().take(4),
+            style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+            color = color,
+        )
+        Text(
+            buildString {
+                append(entry.message)
+                if (file.isNotBlank() && entry.line > 0) append("  ($file:${entry.line})")
+            },
+            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+            color = color,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WebPreview(
@@ -88,6 +129,7 @@ fun WebPreview(
     modifier: Modifier = Modifier,
     onStatus: (String) -> Unit = {},
     onWebView: (WebView?) -> Unit = {},
+    onOpenSource: (String, Int) -> Unit = { _, _ -> },
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -95,8 +137,9 @@ fun WebPreview(
     val webRef = remember { mutableStateOf<WebView?>(null) }
     var progress by remember { mutableIntStateOf(0) }
     var canGoBack by remember { mutableStateOf(false) }
-    var console by remember { mutableStateOf(listOf<String>()) }
+    var console by remember { mutableStateOf(listOf<ConsoleEntry>()) }
     var showConsole by remember { mutableStateOf(false) }
+    val errorCount = console.count { it.level == "error" }
     var viewport by remember { mutableIntStateOf(0) }
     var fullscreen by remember { mutableStateOf<android.view.View?>(null) }
     var fullscreenCallback by remember { mutableStateOf<android.webkit.WebChromeClient.CustomViewCallback?>(null) }
@@ -114,7 +157,7 @@ fun WebPreview(
         done?.invoke(granted.isNotEmpty() && granted.values.all { it })
     }
     SideEffect {
-        host.onConsole = { line -> console = (console + line).takeLast(200) }
+        host.onConsole = { entry -> console = (console + entry).takeLast(500) }
         host.onProgress = { progress = it }
         host.requestPermissions = { permissions, done ->
             host.permissionDone = done
@@ -193,8 +236,10 @@ fun WebPreview(
                 }
             }
             Spacer(Modifier.weight(1f))
-            FilledTonalIconButton(onClick = { showConsole = true }) {
-                Icon(Icons.Outlined.Terminal, contentDescription = "控制台")
+            FilledTonalButton(onClick = { showConsole = !showConsole }) {
+                Icon(Icons.Outlined.Terminal, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(if (errorCount > 0) "控制台 · $errorCount 个错误" else "控制台")
             }
         }
         AnimatedVisibility(
@@ -274,38 +319,40 @@ fun WebPreview(
             )
             }
         }
-    }
-
-    if (showConsole) {
-        ModalBottomSheet(onDismissRequest = { showConsole = false }) {
-            Row(
-                Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, bottom = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("控制台", style = MaterialTheme.typography.titleLarge)
-                TextButton(onClick = { console = emptyList() }) { Text("清空") }
-            }
+        AnimatedVisibility(
+            visible = showConsole,
+            enter = fadeIn(animationSpec = AppMotion.effects()),
+            exit = fadeOut(animationSpec = AppMotion.effectsFast()),
+        ) {
             Surface(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 24.dp),
-                shape = MaterialTheme.shapes.medium,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp, max = 220.dp),
                 color = MaterialTheme.colorScheme.surfaceContainerHighest,
             ) {
-                LazyColumn(Modifier.heightIn(min = 120.dp, max = 420.dp).padding(12.dp)) {
-                    if (console.isEmpty()) {
-                        item {
-                            Text(
-                                "还没有输出",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                Column {
+                    Row(
+                        Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("控制台", style = MaterialTheme.typography.titleSmall)
+                        Row {
+                            TextButton(onClick = { console = emptyList() }) { Text("清空") }
+                            TextButton(onClick = { showConsole = false }) { Text("收起") }
                         }
                     }
-                    items(console) { line ->
-                        Text(
-                            line,
-                            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                        )
+                    LazyColumn(Modifier.weight(1f, fill = false).padding(horizontal = 12.dp).padding(bottom = 8.dp)) {
+                        if (console.isEmpty()) {
+                            item {
+                                Text(
+                                    "还没有输出",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                        items(console) { entry ->
+                            ConsoleRow(entry, onOpenSource)
+                        }
                     }
                 }
             }

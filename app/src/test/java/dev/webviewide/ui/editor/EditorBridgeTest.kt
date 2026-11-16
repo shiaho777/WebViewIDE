@@ -63,6 +63,16 @@ class EditorBridgeTest {
         assertEquals(EditorEvent.Error("boom"), err)
     }
 
+    @Test fun lineStartOffsets() {
+        val text = "one\ntwo\nthree"
+        assertEquals(0, text.lineStartOffset(1))
+        assertEquals(4, text.lineStartOffset(2))
+        assertEquals(8, text.lineStartOffset(3))
+        assertEquals(text.length, text.lineStartOffset(99))
+        assertEquals(0, "".lineStartOffset(3))
+        assertEquals(0, text.lineStartOffset(0))
+    }
+
     @Test fun malformedUpMessagesAreIgnored() {
         assertNull(EditorEvents.parse("not json"))
         assertNull(EditorEvents.parse("[]"))

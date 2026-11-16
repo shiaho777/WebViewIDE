@@ -16,8 +16,15 @@ import android.widget.EditText
 import android.widget.FrameLayout
 import dev.webviewide.project.WebViewConfig
 
+data class ConsoleEntry(
+    val level: String,
+    val source: String,
+    val line: Int,
+    val message: String,
+)
+
 class PreviewHostState {
-    var onConsole: (String) -> Unit = {}
+    var onConsole: (ConsoleEntry) -> Unit = {}
     var onProgress: (Int) -> Unit = {}
     var requestPermissions: (Array<String>, (Boolean) -> Unit) -> Unit = { _, done -> done(false) }
     var chooseFile: (ValueCallback<Array<Uri>>?, WebChromeClient.FileChooserParams?) -> Unit =
@@ -36,7 +43,14 @@ class PreviewChrome(
     private val host: PreviewHostState,
 ) : WebChromeClient() {
     override fun onConsoleMessage(message: ConsoleMessage): Boolean {
-        host.onConsole("${message.messageLevel().name.lowercase()} ${message.sourceId()}:${message.lineNumber()}  ${message.message()}")
+        host.onConsole(
+            ConsoleEntry(
+                level = message.messageLevel().name.lowercase(),
+                source = message.sourceId().orEmpty(),
+                line = message.lineNumber(),
+                message = message.message().orEmpty(),
+            ),
+        )
         return true
     }
 
