@@ -72,4 +72,9 @@ afterEvaluate {
     tasks.named("mergeReleaseAssets").configure {
         dependsOn(":runtime:syncRuntimeTemplate")
     }
+    // Lint vital reads src/main/assets too; declare the same dependency so
+    // release builds don't trip Gradle's implicit-dependency validation.
+    tasks.matching { it.name.contains("LintVital") || it.name.contains("LintModel") }.configureEach {
+        dependsOn(":runtime:syncRuntimeTemplate")
+    }
 }
