@@ -1,3 +1,26 @@
 <resources>
     <string name="app_name">WebViewIDE</string>
+
+    <!-- Welcome / first run -->
+    <string name="welcome_tagline">在手机上写网页，\n然后把它变成一个能安装的 App。</string>
+    <string name="welcome_pillars">免 root · 全程离线 · 系统 WebView 渲染</string>
+    <string name="welcome_pick_title">先挑一个作品看看</string>
+    <string name="welcome_start_blank">从空白页开始</string>
+    <string name="welcome_hint">示例可以直接改：改完点运行看效果，点打包生成 APK。</string>
+    <string name="welcome_subtitle">挑一个开始</string>
+
+    <!-- About -->
+    <string name="about_title">关于 WebViewIDE</string>
+    <string name="about_version">版本 %1$s (%2$d)</string>
+    <string name="about_summary">在手机上写 HTML / CSS / JavaScript，用系统 WebView 预览，再打包成可安装的 APK。全程免 root、可离线。</string>
+    <string name="about_editor_label">编辑器</string>
+    <string name="about_editor_detail">CodeMirror 6：补全、括号配对、查找替换、撤销重做</string>
+    <string name="about_preview_label">预览</string>
+    <string name="about_preview_detail">改 CSS 不刷新页面；整页刷新保留滚动与表单</string>
+    <string name="about_package_label">打包</string>
+    <string name="about_package_detail">改写模板 APK 资源并做 V1/V2/V3 签名与四字节对齐</string>
+    <string name="about_signing_label">签名</string>
+    <string name="about_signing_detail">默认本机调试签名；导入自己的密钥库后可覆盖升级</string>
+    <string name="about_limit">打包产物不含 Node/npm 构建链：请写免编译的网页，或先在别处构建好再导入 dist。</string>
+    <string name="about_dismiss">知道了</string>
 </resources>

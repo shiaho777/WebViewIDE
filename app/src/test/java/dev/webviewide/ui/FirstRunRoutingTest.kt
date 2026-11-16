@@ -51,7 +51,11 @@ class FirstRunRoutingTest {
         assertTrue(welcome.contains("TemplateCard("))
         assertEquals(3, Templates.showcase.size)
         // Brand + value proposition must be present, not just a template list.
+        // Copy lives in strings.xml so it stays localisable.
+        val strings = File("src/main/res/values/strings.xml").readText()
         assertTrue(welcome.contains("WebViewIDE"))
-        assertTrue(welcome.contains("免 root"))
+        assertTrue(welcome.contains("stringResource(R.string.welcome_pillars)"))
+        assertTrue(strings.contains("免 root"))
+        assertTrue(strings.contains("welcome_tagline"))
     }
 }

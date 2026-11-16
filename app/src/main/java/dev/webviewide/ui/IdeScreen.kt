@@ -101,7 +101,7 @@ import dev.webviewide.ui.editor.ImageFace
 import dev.webviewide.ui.theme.AppMotion
 import kotlinx.coroutines.launch
 
-private enum class Panel { PROJECTS, SETTINGS, PACKAGE }
+private enum class Panel { PROJECTS, SETTINGS, PACKAGE, ABOUT }
 
 @Composable
 fun rememberIdeSession(): IdeSession {
@@ -219,7 +219,7 @@ fun IdeScreen() {
                         )
                     },
                     actions = {
-                        if (project == null) return@TopAppBar
+                        if (project != null) {
                         RunButton(
                             busy = session.busy,
                             enabled = project != null && !session.busy,
@@ -239,11 +239,13 @@ fun IdeScreen() {
                         ) {
                             Icon(Icons.Outlined.Archive, contentDescription = "打包")
                         }
+                        }
                         Box {
                             IconButton(onClick = { menu = true }) {
                                 Icon(Icons.Outlined.MoreVert, contentDescription = "更多")
                             }
                             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                                if (project != null) {
                                 DropdownMenuItem(
                                     text = { Text("在浏览器打开") },
                                     leadingIcon = { Icon(Icons.Outlined.OpenInBrowser, contentDescription = null) },
@@ -282,6 +284,16 @@ fun IdeScreen() {
                                     onClick = {
                                         menu = false
                                         session.redetect()
+                                    },
+                                )
+                                }
+                                HorizontalDivider(Modifier.padding(vertical = 4.dp))
+                                DropdownMenuItem(
+                                    text = { Text("关于 WebViewIDE") },
+                                    leadingIcon = { Icon(Icons.Outlined.Info, contentDescription = null) },
+                                    onClick = {
+                                        menu = false
+                                        panel = Panel.ABOUT
                                     },
                                 )
                             }
@@ -428,6 +440,7 @@ fun IdeScreen() {
                 onDismiss = { panel = null },
             )
         }
+        Panel.ABOUT -> AboutSheet(onDismiss = { panel = null })
         Panel.PACKAGE -> project?.let { open ->
             androidx.compose.runtime.LaunchedEffect(open.id) { session.refreshBuildState() }
             PackageSheet(
