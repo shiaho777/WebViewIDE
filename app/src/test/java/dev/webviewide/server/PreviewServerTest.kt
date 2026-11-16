@@ -100,6 +100,80 @@ class PreviewServerTest {
         }
     }
 
+    @Test fun reloadEventsCarryKindAndPath() {
+        val root = createTempDirectory("events").toFile()
+        val server = LocalPreviewServer()
+        try {
+            File(root, "index.html").writeText("<html><body>hi</body></html>")
+            server.root = root
+            server.liveReload = true
+            val port = server.start(4287, false)
+            Socket("127.0.0.1", port).use { socket ->
+                socket.soTimeout = 3000
+                socket.getOutputStream().apply {
+                    write("GET /__webviewide/reload HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n".toByteArray())
+                    flush()
+                }
+                val input = socket.getInputStream()
+                val head = StringBuilder()
+                // Read headers byte-wise until the blank line.
+                var tail = ""
+                while (!tail.endsWith("\r\n\r\n")) {
+                    val b = input.read()
+                    if (b < 0) break
+                    head.append(b.toChar())
+                    tail = (tail + b.toChar()).takeLast(4)
+                }
+                assertTrue(head.toString().contains("text/event-stream"))
+                server.reload("style.css", full = false)
+                val cssEvent = readSseData(input)
+                assertTrue(cssEvent.contains("\"kind\":\"css\""))
+                assertTrue(cssEvent.contains("\"path\":\"style.css\""))
+                server.reload()
+                val fullEvent = readSseData(input)
+                assertTrue(fullEvent.contains("\"kind\":\"full\""))
+            }
+        } finally {
+            server.stop()
+            root.deleteRecursively()
+        }
+    }
+
+    @Test fun injectedClientHotSwapsCss() {
+        val root = createTempDirectory("client").toFile()
+        val client = File("src/main/assets/preview/client.js").readText()
+        val server = LocalPreviewServer(clientScript = client)
+        try {
+            File(root, "index.html").writeText("<html><body>x</body></html>")
+            server.root = root
+            server.liveReload = true
+            val port = server.start(4288, false)
+            val text = awaitGet(port, "/index.html").second
+            assertTrue(text.contains("data-webviewide=\"reload\""))
+            assertTrue(text.contains("hotSwapCss"))
+            assertTrue(text.contains("sessionStorage"))
+        } finally {
+            server.stop()
+            root.deleteRecursively()
+        }
+    }
+
+    private fun readSseData(input: java.io.InputStream): String {
+        val line = StringBuilder()
+        while (true) {
+            val b = input.read()
+            if (b < 0) break
+            if (b == '\n'.code) {
+                val s = line.toString().trim()
+                line.setLength(0)
+                if (s.startsWith("data: ")) return s.removePrefix("data: ")
+            } else {
+                line.append(b.toChar())
+            }
+        }
+        throw IllegalStateException("no SSE data")
+    }
+
     private fun awaitGetBytes(port: Int, path: String): ByteArray {
         var last: Exception? = null
         repeat(20) {

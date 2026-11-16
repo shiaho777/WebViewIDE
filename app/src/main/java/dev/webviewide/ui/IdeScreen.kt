@@ -331,6 +331,8 @@ fun IdeScreen() {
                                                 initial = session.draft,
                                                 kind = sourceKindFor(file.name),
                                                 onText = { session.edit(it) },
+                                                gotoLine = session.pendingGotoLine,
+                                                onGotoConsumed = { session.pendingGotoLine = 0 },
                                             )
                                         }
                                     }
@@ -345,6 +347,14 @@ fun IdeScreen() {
                                         modifier = Modifier.fillMaxSize(),
                                         onStatus = { session.status = it },
                                         onWebView = session::attachWebView,
+                                        onOpenSource = { file, line ->
+                                            if (session.openRelative(file)) {
+                                                session.pendingGotoLine = line
+                                                switchMode(BifoldMode.BOTH)
+                                            } else {
+                                                session.status = "找不到对应的源文件"
+                                            }
+                                        },
                                     )
                                 },
                             )

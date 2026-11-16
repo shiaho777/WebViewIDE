@@ -48,8 +48,13 @@ class IdeSession(
     var reloadKey by mutableIntStateOf(0)
     var treeTick by mutableIntStateOf(0)
     var expanded by mutableStateOf(setOf<String>())
+    var pendingGotoLine by mutableIntStateOf(0)
 
-    val server = LocalPreviewServer()
+    val server = LocalPreviewServer(
+        clientScript = runCatching {
+            app.assets.open("preview/client.js").bufferedReader().use { it.readText() }
+        }.getOrNull(),
+    )
     private var saveJob: Job? = null
     private var serverJob: Job? = null
     private val saver = DraftSaver()
@@ -191,7 +196,14 @@ class IdeSession(
                 }
             }
             outcome.fold(
-                onSuccess = { served -> if (served && open.liveReload) server.reload() },
+                onSuccess = { served ->
+                    if (served && open.liveReload) {
+                        val rel = runCatching { file.toRelativeString(open.serveDir).replace(File.separatorChar, '/') }
+                            .getOrDefault("")
+                        val cssOnly = file.extension.equals("css", ignoreCase = true)
+                        server.reload(rel, full = !cssOnly)
+                    }
+                },
                 onFailure = { status = it.message ?: "没能保存" },
             )
         }
@@ -206,6 +218,16 @@ class IdeSession(
     fun select(file: File) {
         flushBlocking()
         load(file)
+    }
+
+    /** Opens a project source file by serve-relative path (console jump-to-source). */
+    fun openRelative(path: String): Boolean {
+        val open = project ?: return false
+        val clean = SiteFiles.normalize("/$path") ?: return false
+        val file = File(open.serveDir, clean)
+        if (!file.isFile || !SiteFiles.isInside(open.serveDir, file)) return false
+        select(file)
+        return true
     }
 
     private fun load(file: File?) {

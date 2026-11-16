@@ -63,6 +63,8 @@ fun CmCodeEditor(
     initial: String,
     kind: SourceKind,
     onText: (String) -> Unit,
+    gotoLine: Int = 0,
+    onGotoConsumed: () -> Unit = {},
 ) {
     val scheme = MaterialTheme.colorScheme
     val palette = remember(scheme) { scheme.editorPalette() }
@@ -79,6 +81,17 @@ fun CmCodeEditor(
     fun send(message: String) {
         val web = webRef[0] ?: return
         web.post { web.evaluateJavascript(EditorBridge.jsCall(message), null) }
+    }
+
+    fun jumpToLine(line: Int) {
+        if (line <= 0) return
+        val offset = initial.lineStartOffset(line)
+        send(EditorBridge.goto(id.incrementAndGet(), offset))
+        onGotoConsumed()
+    }
+
+    androidx.compose.runtime.LaunchedEffect(gotoLine, ready, path) {
+        if (ready && gotoLine > 0) jumpToLine(gotoLine)
     }
 
     Column(Modifier.fillMaxSize().imePadding()) {
@@ -200,6 +213,15 @@ fun CmCodeEditor(
                                                 EditorBridge.jsCall(EditorBridge.theme(id.incrementAndGet(), palette)),
                                                 null,
                                             )
+                                            if (gotoLine > 0) {
+                                                evaluateJavascript(
+                                                    EditorBridge.jsCall(
+                                                        EditorBridge.goto(id.incrementAndGet(), initial.lineStartOffset(gotoLine)),
+                                                    ),
+                                                    null,
+                                                )
+                                                onGotoConsumed()
+                                            }
                                         }
                                         is EditorEvent.Change -> onText(event.text)
                                         is EditorEvent.Cursor -> cursor = "行 ${event.line} · 列 ${event.col}"
@@ -275,6 +297,18 @@ private fun SymbolBar(kind: SourceKind, enabled: Boolean, onInsert: (String) -> 
             }
         }
     }
+}
+
+internal fun String.lineStartOffset(line: Int): Int {
+    if (line <= 1) return 0
+    var seen = 1
+    forEachIndexed { index, ch ->
+        if (ch == '\n') {
+            seen++
+            if (seen == line) return (index + 1).coerceAtMost(length)
+        }
+    }
+    return length
 }
 
 private fun blend(foreground: Color, background: Color, alpha: Float): Color = Color(
