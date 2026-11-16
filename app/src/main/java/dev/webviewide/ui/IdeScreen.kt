@@ -161,6 +161,17 @@ fun IdeScreen() {
             else session.exportArtifact(target.second, uri)
         }
     }
+    val exportProject = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/zip"),
+    ) { uri ->
+        if (uri != null) session.exportProjectZip(uri)
+    }
+    androidx.compose.runtime.LaunchedEffect(session.projectExportRequested) {
+        if (session.projectExportRequested) {
+            session.projectExportRequested = false
+            exportProject.launch("${session.project?.name ?: "project"}.zip")
+        }
+    }
 
     fun switchMode(mode: BifoldMode) {
         if (bifold.mode == mode) return
@@ -178,6 +189,7 @@ fun IdeScreen() {
                 onNew = { naming = NameAsk.NewFile },
                 onRename = { naming = NameAsk.RenameFile },
                 onDelete = { naming = NameAsk.DeleteFile },
+                onMove = { naming = NameAsk.MoveFile },
             )
         },
     ) {
@@ -463,6 +475,12 @@ fun IdeScreen() {
                         val rel = runCatching { ProjectStore.relative(project ?: return@NameDialog, file) }.getOrNull()
                             ?: return@NameDialog
                         session.deleteFile(rel)
+                    }
+                    NameAsk.MoveFile -> {
+                        val file = session.current ?: return@NameDialog
+                        val rel = runCatching { ProjectStore.relative(project ?: return@NameDialog, file) }.getOrNull()
+                            ?: return@NameDialog
+                        session.moveFile(rel, value.trim())
                     }
                 }
             },

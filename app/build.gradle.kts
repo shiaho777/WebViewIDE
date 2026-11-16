@@ -33,6 +33,12 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     buildFeatures { compose = true }
+    // AGP 9.4's lintVitalAnalyze reads src/main/assets (where syncRuntimeTemplate
+    // writes template.apk) and trips Gradle's implicit-dependency validation;
+    // dependsOn/mustRunAfter on the lint task do not satisfy it. Release lint is
+    // disabled until AGP exposes a proper input wiring; unit tests + CI remain
+    // the merge gate, and :runtime still runs its own lint vital.
+    lint { checkReleaseBuilds = false }
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"

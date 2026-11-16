@@ -33,10 +33,12 @@ import androidx.compose.material.icons.automirrored.outlined.NoteAdd
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.DriveFileMove
 import androidx.compose.material.icons.outlined.DriveFileRenameOutline
 import androidx.compose.material.icons.outlined.FileOpen
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Badge
 import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.DeleteSweep
@@ -105,7 +107,7 @@ private val templates = listOf(
     "react" to "React",
 )
 
-internal enum class NameAsk { NewFile, RenameFile, DeleteFile }
+internal enum class NameAsk { NewFile, RenameFile, DeleteFile, MoveFile }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -115,6 +117,7 @@ internal fun FileDrawer(
     onNew: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
+    onMove: () -> Unit = {},
 ) {
     val project = session.project
     ModalDrawerSheet(drawerContainerColor = MaterialTheme.colorScheme.surfaceContainerLow) {
@@ -137,6 +140,12 @@ internal fun FileDrawer(
                 enabled = session.current != null,
                 label = { Text("改名") },
                 leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null, Modifier.size(18.dp)) },
+            )
+            AssistChip(
+                onClick = onMove,
+                enabled = session.current != null,
+                label = { Text("移动") },
+                leadingIcon = { Icon(Icons.Outlined.DriveFileMove, contentDescription = null, Modifier.size(18.dp)) },
             )
             AssistChip(
                 onClick = onDelete,
@@ -256,11 +265,14 @@ internal fun NameDialog(
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit,
 ) {
-    var value by remember(ask, currentName) { mutableStateOf(if (ask == NameAsk.RenameFile) currentName else "") }
+    var value by remember(ask, currentName) {
+        mutableStateOf(if (ask == NameAsk.RenameFile || ask == NameAsk.MoveFile) currentName else "")
+    }
     val title = when (ask) {
         NameAsk.NewFile -> "新建文件"
         NameAsk.RenameFile -> "改名"
         NameAsk.DeleteFile -> "删除这个文件？"
+        NameAsk.MoveFile -> "移动到"
     }
     val scheme = MaterialTheme.colorScheme
     val destructive = ask == NameAsk.DeleteFile
@@ -272,6 +284,7 @@ internal fun NameDialog(
                     NameAsk.NewFile -> Icons.AutoMirrored.Outlined.NoteAdd
                     NameAsk.RenameFile -> Icons.Outlined.DriveFileRenameOutline
                     NameAsk.DeleteFile -> Icons.Outlined.DeleteOutline
+                    NameAsk.MoveFile -> Icons.Outlined.DriveFileMove
                 },
                 contentDescription = null,
                 tint = if (destructive) scheme.error else scheme.secondary,
@@ -288,7 +301,15 @@ internal fun NameDialog(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     shape = MaterialTheme.shapes.medium,
-                    label = { Text(if (ask == NameAsk.NewFile) "路径，例如 css/extra.css" else "新名字") },
+                    label = {
+                        Text(
+                            when (ask) {
+                                NameAsk.NewFile -> "路径，例如 css/extra.css"
+                                NameAsk.MoveFile -> "目标路径，例如 js/app.js"
+                                else -> "新名字"
+                            },
+                        )
+                    },
                 )
             }
         },
@@ -451,6 +472,14 @@ internal fun ProjectSheet(
                         Spacer(Modifier.width(ButtonDefaults.IconSpacing))
                         Text("删除项目")
                     }
+                }
+                OutlinedButton(
+                    onClick = { session.requestProjectExport() },
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                ) {
+                    Icon(Icons.Outlined.Archive, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                    Text("导出项目 zip")
                 }
             }
         }

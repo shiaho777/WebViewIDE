@@ -23,7 +23,9 @@ import dev.webviewide.build.KeystoreManager
 import dev.webviewide.build.Orientation
 import dev.webviewide.build.SignMode
 import dev.webviewide.project.DocumentImport
+import dev.webviewide.project.DraftJournal
 import dev.webviewide.project.DraftSaver
+import dev.webviewide.project.ExternalChangeException
 import dev.webviewide.project.ProjectIds
 import dev.webviewide.project.ProjectStore
 import dev.webviewide.project.WebProject
@@ -56,6 +58,11 @@ class IdeSession(
     var pendingGotoLine by mutableIntStateOf(0)
     var artifacts by mutableStateOf(listOf<BuildArtifact>())
     var signingKeys by mutableStateOf(listOf<KeystoreManager.StoredKey>())
+    var projectExportRequested by mutableStateOf(false)
+
+    fun requestProjectExport() {
+        projectExportRequested = true
+    }
 
     fun refreshBuildState() {
         artifacts = ArtifactStore.list(app)
@@ -145,6 +152,7 @@ class IdeSession(
     private var saveJob: Job? = null
     private var serverJob: Job? = null
     private val saver = DraftSaver()
+    private val journal = DraftJournal(File(app.filesDir, "draft-journal.txt"))
     private var version = 0L
     private val dirty: Boolean get() = !saver.isSaved(version)
     private var lastProjectId: String? = null
@@ -154,7 +162,29 @@ class IdeSession(
         scope.launch {
             val opened = withContext(Dispatchers.IO) { ProjectStore.current(app) }
             show(opened)
+            recoverJournal()
         }
+    }
+
+    private fun recoverJournal() {
+        val entry = journal.recover() ?: return
+        val open = project ?: return
+        val target = entry.target
+        if (!target.isFile || !SiteFiles.isInside(open.srcDir, target)) {
+            journal.clear()
+            return
+        }
+        if (target.readText() == entry.text) {
+            journal.clear()
+            return
+        }
+        current = target
+        draft = entry.text
+        version += 1
+        saver.noteDiskState(target)
+        reveal(target)
+        status = "已恢复上次未保存的修改"
+        scheduleSave()
     }
 
     fun close() {
@@ -265,6 +295,7 @@ class IdeSession(
     fun edit(text: String) {
         draft = text
         version += 1
+        current?.let { journal.record(it, text, version) }
         scheduleSave()
     }
 
@@ -284,6 +315,7 @@ class IdeSession(
             }
             outcome.fold(
                 onSuccess = { served ->
+                    journal.clear()
                     if (served && open.liveReload) {
                         val rel = runCatching { file.toRelativeString(open.serveDir).replace(File.separatorChar, '/') }
                             .getOrDefault("")
@@ -291,7 +323,10 @@ class IdeSession(
                         server.reload(rel, full = !cssOnly)
                     }
                 },
-                onFailure = { status = it.message ?: "没能保存" },
+                onFailure = {
+                    status = it.message ?: "没能保存"
+                    if (it is ExternalChangeException) journal.clear()
+                },
             )
         }
     }
@@ -322,7 +357,10 @@ class IdeSession(
         current = file
         draft = file?.let { readFile(it) }.orEmpty()
         saver.discardThrough(version)
-        if (file != null) reveal(file)
+        if (file != null) {
+            saver.noteDiskState(file)
+            reveal(file)
+        }
     }
 
     fun createFile(relative: String) {
@@ -366,6 +404,61 @@ class IdeSession(
         }
         treeTick += 1
         if (moved != null) load(moved)
+    }
+
+    fun moveFile(relative: String, targetRelative: String) {
+        val open = project ?: return
+        val file = resolve(open, relative) ?: return
+        val target = resolve(open, targetRelative) ?: run {
+            status = "这个路径不能用"
+            return
+        }
+        if (target.exists()) {
+            status = "目标位置已经有文件"
+            return
+        }
+        if (SiteFiles.isInside(file, target)) {
+            status = "不能移动到自身里面"
+            return
+        }
+        flushBlocking()
+        val movedCurrent = current?.takeIf { SiteFiles.isInside(file, it) }?.let {
+            if (it == file) target else File(target, it.toRelativeString(file))
+        }
+        target.parentFile?.mkdirs()
+        if (!file.renameTo(target)) {
+            status = "没能移动"
+            return
+        }
+        treeTick += 1
+        if (movedCurrent != null) {
+            current = movedCurrent
+            saver.noteDiskState(movedCurrent)
+            reveal(movedCurrent)
+        }
+        status = "已移动到 $targetRelative"
+    }
+
+    fun exportProjectZip(uri: Uri) {
+        val open = project ?: return
+        scope.launch {
+            val outcome = withContext(Dispatchers.IO) {
+                runCatching {
+                    flushBlocking()
+                    app.contentResolver.openOutputStream(uri)?.use { out ->
+                        java.util.zip.ZipOutputStream(out).use { zip ->
+                            ProjectStore.listUnder(open.srcDir).forEach { f ->
+                                val rel = ProjectStore.relative(open, f)
+                                zip.putNextEntry(java.util.zip.ZipEntry(rel))
+                                f.inputStream().use { it.copyTo(zip) }
+                                zip.closeEntry()
+                            }
+                        }
+                    } ?: error("没能写入导出位置")
+                }
+            }
+            status = outcome.fold({ "项目已导出为 zip" }, { it.message ?: "导出失败" })
+        }
     }
 
     fun deleteFile(relative: String) {
