@@ -94,18 +94,63 @@ import dev.webviewide.build.ArtifactKind
 import dev.webviewide.build.BuildArtifact
 import dev.webviewide.build.KeystoreManager
 import dev.webviewide.project.FileTreeIndex
+import dev.webviewide.project.Template
+import dev.webviewide.project.Templates
 import dev.webviewide.project.WebProject
 import dev.webviewide.project.WebViewConfig
 import dev.webviewide.ui.theme.AppMotion
 import java.io.File
 import kotlin.math.roundToInt
 
-private val templates = listOf(
-    "blank" to "空白页",
-    "multipage" to "多页面",
-    "vue" to "Vue",
-    "react" to "React",
-)
+/** Selectable starter card: gradient swatch + name + one-line description. */
+@Composable
+internal fun TemplateCard(
+    template: Template,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val border = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+    Surface(
+        onClick = onClick,
+        shape = MaterialTheme.shapes.medium,
+        color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+        border = androidx.compose.foundation.BorderStroke(if (selected) 2.dp else 1.dp, border),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                Modifier
+                    .size(44.dp)
+                    .clip(MaterialTheme.shapes.small)
+                    .background(
+                        androidx.compose.ui.graphics.Brush.linearGradient(
+                            listOf(Color(template.accent), Color(template.accent2)),
+                        ),
+                    ),
+            )
+            Column(Modifier.weight(1f)) {
+                Text(template.name, style = MaterialTheme.typography.titleSmall)
+                Text(
+                    template.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (selected) {
+                Icon(
+                    Icons.Outlined.Check,
+                    contentDescription = "已选",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
+    }
+}
 
 internal enum class NameAsk { NewFile, RenameFile, DeleteFile, MoveFile }
 
@@ -363,29 +408,12 @@ internal fun ProjectSheet(
                         shape = MaterialTheme.shapes.medium,
                         label = { Text("给它起个名字") },
                     )
-                    Row(
-                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        templates.forEach { (id, label) ->
-                            val selected = template == id
-                            FilterChip(
-                                selected = selected,
-                                onClick = { template = id },
-                                label = { Text(label) },
-                                leadingIcon = {
-                                    androidx.compose.animation.AnimatedVisibility(
-                                        visible = selected,
-                                        enter = scaleIn(AppMotion.spatialFast()) + fadeIn(AppMotion.effects()),
-                                        exit = scaleOut(AppMotion.effectsFast()) + fadeOut(AppMotion.effectsFast()),
-                                    ) {
-                                        Icon(
-                                            Icons.Outlined.Check,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(FilterChipDefaults.IconSize),
-                                        )
-                                    }
-                                },
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Templates.all.forEach { t ->
+                            TemplateCard(
+                                template = t,
+                                selected = template == t.id,
+                                onClick = { template = t.id },
                             )
                         }
                     }

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>我的主页</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- hero：渐变背景 + 头像 + 一句话介绍。改文字即可变成你自己的主页。 -->
+  <header class="hero">
+    <div class="avatar" aria-hidden="true">W</div>
+    <h1>你好，我是<span class="accent">小舟</span></h1>
+    <p class="tagline">在手机上写网页的人 · 设计 / 前端 / 手作</p>
+    <div class="hero-actions">
+      <a class="btn primary" href="#works">看看作品</a>
+      <a class="btn ghost" href="#contact">联系我</a>
+    </div>
+  </header>
+
+  <main>
+    <!-- 数据卡片：数字由 main.js 做滚动计数动画。 -->
+    <section class="stats" aria-label="概览">
+      <div class="stat"><b class="count" data-to="12">0</b><span>个作品</span></div>
+      <div class="stat"><b class="count" data-to="3">0</b><span>年经验</span></div>
+      <div class="stat"><b class="count" data-to="98">0</b><span>% 好评</span></div>
+    </section>
+
+    <section id="works" class="works">
+      <h2>精选作品</h2>
+      <!-- 卡片由 main.js 从数组渲染，改数组就能换作品。 -->
+      <div class="grid" id="workGrid"></div>
+    </section>
+
+    <section id="contact" class="contact">
+      <h2>联系我</h2>
+      <p>把下面换成你的邮箱或社交账号。</p>
+      <a class="btn primary" href="mailto:hello@example.com">hello@example.com</a>
+    </section>
+  </main>
+
+  <footer>用 WebViewIDE 在手机上做的 · <span id="year"></span></footer>
+  <script src="main.js"></script>
+</body>
+</html>

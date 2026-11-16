@@ -1,0 +1,85 @@
+:root {
+  --bg: #0b0f14;
+  --panel: #141a22;
+  --line: #222b36;
+  --text: #e9eef5;
+  --muted: #93a1b1;
+  --hot: #ffd166;
+  --good: #4ade80;
+  --bad: #f87171;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 16px/1.5 -apple-system, "PingFang SC", "Noto Sans SC", sans-serif;
+  overscroll-behavior: none;
+}
+
+.app { max-width: 560px; margin: 0 auto; padding: 14px; }
+
+.hud { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+.chip {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 14px; padding: 8px; text-align: center;
+}
+.chip span { display: block; font-size: 11px; color: var(--muted); }
+.chip b { font-size: 22px; }
+#time.low { color: var(--bad); }
+
+/* 棋盘：固定宽高比，方块用百分比定位，适配任意屏幕。 */
+.board {
+  position: relative; width: 100%; aspect-ratio: 3 / 4;
+  background:
+    radial-gradient(70% 60% at 50% 0%, rgba(255, 209, 102, .10), transparent 70%),
+    var(--panel);
+  border: 1px solid var(--line); border-radius: 20px; overflow: hidden;
+  touch-action: manipulation;
+}
+
+.dot {
+  position: absolute; width: 64px; height: 64px; border-radius: 18px;
+  background: linear-gradient(135deg, var(--hot), #ff9f68);
+  box-shadow: 0 8px 24px rgba(255, 159, 104, .35);
+  animation: pop .18s ease-out;
+  display: grid; place-items: center; font-size: 22px;
+}
+.dot:active { transform: scale(.9); }
+@keyframes pop { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+/* 命中飘分 */
+.float {
+  position: absolute; font-weight: 700; color: var(--good);
+  pointer-events: none; animation: rise .6s ease-out forwards;
+}
+@keyframes rise { to { transform: translateY(-38px); opacity: 0; } }
+
+.miss { position: absolute; color: var(--bad); pointer-events: none; animation: rise .5s ease-out forwards; }
+
+.overlay {
+  position: absolute; inset: 0; display: grid; place-content: center;
+  text-align: center; gap: 10px; padding: 24px;
+  background: rgba(11, 15, 20, .86); backdrop-filter: blur(2px);
+}
+.overlay h1 { margin: 0; font-size: 26px; }
+.overlay p { margin: 0; color: var(--muted); font-size: 14px; }
+.overlay.hide { display: none; }
+
+.btn {
+  margin-top: 8px; padding: 12px 26px; border: 0; border-radius: 999px;
+  background: linear-gradient(135deg, var(--hot), #ff9f68);
+  color: #22160a; font-size: 16px; font-weight: 700;
+}
+.btn:active { transform: scale(.96); }
+
+.foot { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
+#combo { color: var(--hot); font-weight: 600; }
+.mini {
+  background: transparent; border: 1px solid var(--line); color: var(--muted);
+  border-radius: 999px; padding: 7px 14px; font-size: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dot, .float, .miss { animation: none; }
+}

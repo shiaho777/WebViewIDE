@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>快点方块</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="hud">
+      <div class="chip"><span>得分</span><b id="score">0</b></div>
+      <div class="chip"><span>剩余</span><b id="time">30</b></div>
+      <div class="chip"><span>最高</span><b id="best">0</b></div>
+    </header>
+
+    <!-- 游戏区：方块由 main.js 随机放置，点中得分。 -->
+    <div class="board" id="board">
+      <div class="overlay" id="overlay">
+        <h1>快点方块</h1>
+        <p>30 秒内点中尽可能多的方块。<br />连击有加成，点空会断连击。</p>
+        <button class="btn" id="startBtn">开始游戏</button>
+      </div>
+    </div>
+
+    <footer class="foot">
+      <span id="combo">连击 ×1</span>
+      <button class="mini" id="resetBtn">重置最高分</button>
+    </footer>
+  </div>
+  <script src="main.js"></script>
+</body>
+</html>

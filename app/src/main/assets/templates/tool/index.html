@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>专注 & 记账</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="focus" role="tab">专注</button>
+      <button class="tab" data-tab="money" role="tab">记账</button>
+    </nav>
+
+    <!-- 专注：环形进度用 SVG stroke-dashoffset 画，无需 canvas。 -->
+    <section class="panel active" id="focus">
+      <div class="ring-wrap">
+        <svg viewBox="0 0 120 120" class="ring" aria-hidden="true">
+          <circle class="track" cx="60" cy="60" r="52" />
+          <circle class="bar" id="bar" cx="60" cy="60" r="52" />
+        </svg>
+        <div class="ring-text"><b id="clock">25:00</b><span id="state">准备开始</span></div>
+      </div>
+      <div class="presets">
+        <button class="pill active" data-min="25">25 分</button>
+        <button class="pill" data-min="15">15 分</button>
+        <button class="pill" data-min="5">5 分</button>
+      </div>
+      <div class="row">
+        <button class="btn primary" id="toggle">开始</button>
+        <button class="btn ghost" id="reset">重置</button>
+      </div>
+      <p class="hint">今天完成 <b id="doneCount">0</b> 个专注段</p>
+    </section>
+
+    <!-- 记账：条目存 localStorage，刷新不丢。 -->
+    <section class="panel" id="money">
+      <div class="sum">
+        <div><span>本月支出</span><b id="total">¥0.00</b></div>
+      </div>
+      <form class="entry" id="entryForm">
+        <input id="note" type="text" placeholder="买了什么" maxlength="20" required />
+        <input id="amount" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="金额" required />
+        <button class="btn primary" type="submit">记一笔</button>
+      </form>
+      <ul class="list" id="list"></ul>
+      <button class="mini" id="clear">清空本月</button>
+    </section>
+  </div>
+  <script src="main.js"></script>
+</body>
+</html>

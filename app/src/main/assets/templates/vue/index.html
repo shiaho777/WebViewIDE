@@ -3,22 +3,92 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Vue</title>
+  <title>Vue 待办</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div id="app">
     <main>
-      <p class="mark">Vue</p>
-      <h1>{{ title }}</h1>
-      <p>这一页带着 Vue，改完就能在预览里看到。</p>
-      <button type="button" @click="count++">点过 {{ count }} 次</button>
+      <p class="mark">Vue · 本地构建，无需 npm</p>
+      <h1>今天要做的事</h1>
+
+      <!-- v-model 双向绑定输入框；@submit.prevent 阻止表单默认跳转。 -->
+      <form class="entry" @submit.prevent="add">
+        <input v-model.trim="draft" placeholder="添加一件事" maxlength="40" />
+        <button type="submit">添加</button>
+      </form>
+
+      <div class="filters">
+        <button v-for="f in filters" :key="f.id"
+                :class="{ on: filter === f.id }" @click="filter = f.id">
+          {{ f.label }}
+        </button>
+      </div>
+
+      <!-- computed 属性 visible 会随 todos / filter 自动重算。 -->
+      <ul class="list">
+        <li v-for="t in visible" :key="t.id" :class="{ done: t.done }">
+          <label>
+            <input type="checkbox" v-model="t.done" />
+            <span>{{ t.text }}</span>
+          </label>
+          <button class="del" @click="remove(t.id)" aria-label="删除">×</button>
+        </li>
+      </ul>
+      <p v-if="!visible.length" class="empty">这里空空的，先加一件事吧。</p>
+
+      <footer>
+        <span>还剩 {{ left }} 件</span>
+        <button class="mini" @click="clearDone">清掉已完成</button>
+      </footer>
     </main>
   </div>
   <script src="vue.global.prod.js"></script>
   <script>
+    const KEY = "vue_todos_v1";
     Vue.createApp({
-      data: () => ({ title: "写在手机上的 Vue", count: 0 }),
+      data: () => ({
+        draft: "",
+        filter: "all",
+        filters: [
+          { id: "all", label: "全部" },
+          { id: "active", label: "未完成" },
+          { id: "done", label: "已完成" },
+        ],
+        todos: JSON.parse(localStorage.getItem(KEY) || "[]"),
+      }),
+      computed: {
+        visible() {
+          if (this.filter === "active") return this.todos.filter((t) => !t.done);
+          if (this.filter === "done") return this.todos.filter((t) => t.done);
+          return this.todos;
+        },
+        left() {
+          return this.todos.filter((t) => !t.done).length;
+        },
+      },
+      // deep watch：数组内部对象变化也要持久化。
+      watch: {
+        todos: {
+          deep: true,
+          handler(v) {
+            localStorage.setItem(KEY, JSON.stringify(v));
+          },
+        },
+      },
+      methods: {
+        add() {
+          if (!this.draft) return;
+          this.todos.push({ id: Date.now(), text: this.draft, done: false });
+          this.draft = "";
+        },
+        remove(id) {
+          this.todos = this.todos.filter((t) => t.id !== id);
+        },
+        clearDone() {
+          this.todos = this.todos.filter((t) => !t.done);
+        },
+      },
     }).mount("#app");
   </script>
 </body>
