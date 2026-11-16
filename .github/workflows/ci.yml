@@ -34,3 +34,7 @@ jobs:
         run: node tools/editor/verify.mjs
       - name: Unit tests, runtime template, and debug APKs
         run: ./gradlew :app:testDebugUnitTest :runtime:testDebugUnitTest :runtime:syncRuntimeTemplate :app:assembleDebug :runtime:assembleDebug :app:assembleDebugAndroidTest --stacktrace
+      - name: Spot-check template signature
+        run: |
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
+          "$APKSIGNER" verify --verbose app/src/main/assets/runtime/template.apk

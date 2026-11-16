@@ -27,6 +27,20 @@ object ApkInstaller {
         }
     }
 
+    fun share(context: Context, apk: File) {
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            apk,
+        )
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "application/vnd.android.package-archive"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(Intent.createChooser(intent, "分享安装包").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+
     fun install(context: Context, apk: File) {
         val uri = FileProvider.getUriForFile(
             context,

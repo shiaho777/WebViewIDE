@@ -42,6 +42,8 @@ import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material.icons.outlined.Inventory2
+import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.RocketLaunch
@@ -86,6 +88,9 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import dev.webviewide.build.ArtifactKind
+import dev.webviewide.build.BuildArtifact
+import dev.webviewide.build.KeystoreManager
 import dev.webviewide.project.FileTreeIndex
 import dev.webviewide.project.WebProject
 import dev.webviewide.project.WebViewConfig
@@ -673,6 +678,15 @@ internal fun PackageSheet(
     onPickIcon: () -> Unit,
     onPack: () -> Unit,
     onDismiss: () -> Unit,
+    signingKeys: List<KeystoreManager.StoredKey> = emptyList(),
+    artifacts: List<BuildArtifact> = emptyList(),
+    onImportKeystore: () -> Unit = {},
+    onBindKeystore: (String) -> Unit = {},
+    onExportKeystore: (String) -> Unit = {},
+    onInstallArtifact: (String) -> Unit = {},
+    onShareArtifact: (String) -> Unit = {},
+    onExportArtifact: (String) -> Unit = {},
+    onDeleteArtifact: (String) -> Unit = {},
 ) {
     var name by remember(project.id) { mutableStateOf(project.name) }
     var packageName by remember(project.id) { mutableStateOf(project.resolvedPackageName()) }
@@ -802,6 +816,47 @@ internal fun PackageSheet(
                             onClick = { abis = if (abi in abis) abis - abi else abis + abi },
                             label = { Text(abi) },
                         )
+                    }
+                }
+            }
+            SectionCard("签名", Icons.Outlined.Key) {
+                Text(
+                    "本机调试签名换手机或重装 IDE 后会失效，装过的应用无法覆盖升级。要对外分发，请导入你自己的密钥库并妥善备份。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                ChipGroup(
+                    title = "签名身份",
+                    options = listOf("" to "本机调试") + signingKeys.map { it.fingerprint to it.alias },
+                    selected = project.signingFingerprint,
+                ) { onBindKeystore(it) }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilledTonalButton(onClick = onImportKeystore) { Text("导入密钥库") }
+                    if (project.signingFingerprint.isNotBlank()) {
+                        OutlinedButton(onClick = { onExportKeystore(project.signingFingerprint) }) { Text("导出备份") }
+                    }
+                }
+                ToggleRow("打包时版本号自动 +1", project.autoVersionCode) {
+                    onProject(project.copy(autoVersionCode = it))
+                }
+            }
+            if (artifacts.isNotEmpty()) {
+                SectionCard("安装包", Icons.Outlined.Inventory2) {
+                    artifacts.take(8).forEach { artifact ->
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                "${artifact.appName} ${artifact.versionName} (${artifact.versionCode}) · " +
+                                    if (artifact.kind == ArtifactKind.APK_RELEASE) "正式签名" else "调试签名",
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                TextButton(onClick = { onInstallArtifact(artifact.id) }) { Text("安装") }
+                                TextButton(onClick = { onShareArtifact(artifact.id) }) { Text("分享") }
+                                TextButton(onClick = { onExportArtifact(artifact.id) }) { Text("导出") }
+                                TextButton(onClick = { onDeleteArtifact(artifact.id) }) { Text("删除") }
+                            }
+                            HorizontalDivider()
+                        }
                     }
                 }
             }

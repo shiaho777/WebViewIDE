@@ -3,6 +3,9 @@
     <files-path
         name="projects"
         path="web-projects/" />
+    <files-path
+        name="builds"
+        path="builds/" />
     <cache-path
         name="cache"
         path="." />

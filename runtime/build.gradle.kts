@@ -16,6 +16,23 @@ android {
 
     signingConfigs {
         getByName("debug")
+        // CI/release can inject a dedicated template identity via env vars;
+        // local builds fall back to debug so no secrets are ever committed.
+        create("templateRelease") {
+            val store = System.getenv("RUNTIME_TEMPLATE_KEYSTORE")
+            if (store != null && file(store).isFile) {
+                storeFile = file(store)
+                storePassword = System.getenv("RUNTIME_TEMPLATE_STORE_PASSWORD")
+                keyAlias = System.getenv("RUNTIME_TEMPLATE_KEY_ALIAS")
+                keyPassword = System.getenv("RUNTIME_TEMPLATE_KEY_PASSWORD")
+            } else {
+                val debug = getByName("debug")
+                storeFile = debug.storeFile
+                storePassword = debug.storePassword
+                keyAlias = debug.keyAlias
+                keyPassword = debug.keyPassword
+            }
+        }
     }
 
     buildTypes {
@@ -26,7 +43,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("templateRelease")
         }
         debug {
             isMinifyEnabled = false

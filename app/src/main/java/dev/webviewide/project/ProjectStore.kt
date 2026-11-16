@@ -25,6 +25,8 @@ data class WebProject(
     val lan: Boolean = false,
     val liveReload: Boolean = true,
     val classicEditor: Boolean = false,
+    val signingFingerprint: String = "",
+    val autoVersionCode: Boolean = false,
     val webview: WebViewConfig = WebViewConfig(),
     val detected: Boolean = false,
 ) {
@@ -226,6 +228,8 @@ object ProjectStore {
         "lan" to lan,
         "liveReload" to liveReload,
         "classicEditor" to classicEditor,
+        "signingFingerprint" to signingFingerprint,
+        "autoVersionCode" to autoVersionCode,
         "webview" to webview.toMap(),
     )
 
@@ -256,6 +260,8 @@ object ProjectStore {
             lan = map.boolean("lan", false),
             liveReload = map.boolean("liveReload", true),
             classicEditor = map.boolean("classicEditor", false),
+            signingFingerprint = map.string("signingFingerprint"),
+            autoVersionCode = map.boolean("autoVersionCode", false),
             webview = WebViewConfig.fromMap(map.obj("webview")),
             detected = map.containsKey("kind"),
         )

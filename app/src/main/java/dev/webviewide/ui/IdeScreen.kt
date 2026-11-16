@@ -146,6 +146,21 @@ fun IdeScreen() {
     val importIcon = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) session.importIcon(uri)
     }
+    var keystoreUri by remember { mutableStateOf<Uri?>(null) }
+    var exportTarget by remember { mutableStateOf<Pair<String, String>?>(null) }
+    val importKeystore = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) keystoreUri = uri
+    }
+    val exportKeystore = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/x-pkcs12"),
+    ) { uri ->
+        val target = exportTarget
+        exportTarget = null
+        if (uri != null && target != null) {
+            if (target.first == "keystore") session.exportKeystore(target.second, uri)
+            else session.exportArtifact(target.second, uri)
+        }
+    }
 
     fun switchMode(mode: BifoldMode) {
         if (bifold.mode == mode) return
@@ -388,6 +403,7 @@ fun IdeScreen() {
             )
         }
         Panel.PACKAGE -> project?.let { open ->
+            androidx.compose.runtime.LaunchedEffect(open.id) { session.refreshBuildState() }
             PackageSheet(
                 project = open,
                 onProject = { next -> session.update(next, false) },
@@ -397,9 +413,34 @@ fun IdeScreen() {
                     session.pack()
                 },
                 onDismiss = { panel = null },
+                signingKeys = session.signingKeys,
+                artifacts = session.artifacts,
+                onImportKeystore = { importKeystore.launch(arrayOf("*/*")) },
+                onBindKeystore = session::bindKeystore,
+                onExportKeystore = { fp ->
+                    exportTarget = "keystore" to fp
+                    exportKeystore.launch("keystore-backup.p12")
+                },
+                onInstallArtifact = session::installArtifact,
+                onShareArtifact = session::shareArtifact,
+                onExportArtifact = { id ->
+                    exportTarget = "artifact" to id
+                    exportKeystore.launch("app-release.apk")
+                },
+                onDeleteArtifact = session::deleteArtifact,
             )
         }
         null -> Unit
+    }
+
+    keystoreUri?.let { uri ->
+        KeystoreImportDialog(
+            onDismiss = { keystoreUri = null },
+            onConfirm = { storePassword, alias, keyPassword ->
+                keystoreUri = null
+                session.importKeystore(uri, storePassword, alias, keyPassword)
+            },
+        )
     }
 
     naming?.let { ask ->
