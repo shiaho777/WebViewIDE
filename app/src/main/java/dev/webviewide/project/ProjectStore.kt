@@ -24,6 +24,7 @@ data class WebProject(
     val serverPort: Int = 4173,
     val lan: Boolean = false,
     val liveReload: Boolean = true,
+    val classicEditor: Boolean = false,
     val webview: WebViewConfig = WebViewConfig(),
     val detected: Boolean = false,
 ) {
@@ -224,6 +225,7 @@ object ProjectStore {
         "serverPort" to serverPort,
         "lan" to lan,
         "liveReload" to liveReload,
+        "classicEditor" to classicEditor,
         "webview" to webview.toMap(),
     )
 
@@ -253,6 +255,7 @@ object ProjectStore {
             serverPort = map.int("serverPort", 4173),
             lan = map.boolean("lan", false),
             liveReload = map.boolean("liveReload", true),
+            classicEditor = map.boolean("classicEditor", false),
             webview = WebViewConfig.fromMap(map.obj("webview")),
             detected = map.containsKey("kind"),
         )

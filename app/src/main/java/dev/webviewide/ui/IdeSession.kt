@@ -451,8 +451,8 @@ class IdeSession(
 
     private fun readFile(file: File): String {
         if (isRasterImage(file.name)) return ""
-        if (file.length() > 512_000) {
-            status = "这个文件太大，编辑器只打开 512 KB 以内的文本"
+        if (file.length() > 2_000_000) {
+            status = "这个文件太大，编辑器只打开 2 MB 以内的文本"
             return ""
         }
         return runCatching { file.readText() }.getOrElse {
