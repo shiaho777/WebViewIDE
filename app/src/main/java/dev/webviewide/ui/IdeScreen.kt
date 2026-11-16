@@ -89,6 +89,7 @@ import androidx.compose.ui.unit.dp
 import dev.webviewide.preview.WebPreview
 import dev.webviewide.project.ProjectIds
 import dev.webviewide.project.ProjectStore
+import dev.webviewide.project.Templates
 import dev.webviewide.project.isRasterImage
 import dev.webviewide.project.sourceKindFor
 import dev.webviewide.ui.bifold.BifoldMode
@@ -202,18 +203,23 @@ fun IdeScreen() {
                         scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
                     ),
                     navigationIcon = {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(Icons.Outlined.FolderOpen, contentDescription = "文件")
+                        // No project yet: the welcome screen has its own entries.
+                        if (project != null) {
+                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                Icon(Icons.Outlined.FolderOpen, contentDescription = "文件")
+                            }
                         }
                     },
                     title = {
                         ProjectTitle(
                             name = project?.name ?: "WebViewIDE",
                             path = currentPath,
+                            hasProject = project != null,
                             onClick = { panel = Panel.PROJECTS },
                         )
                     },
                     actions = {
+                        if (project == null) return@TopAppBar
                         RunButton(
                             busy = session.busy,
                             enabled = project != null && !session.busy,
@@ -284,6 +290,7 @@ fun IdeScreen() {
                 )
             },
             bottomBar = {
+                if (project == null) return@Scaffold
                 ShortNavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer) {
                     ModeItem(bifold.mode == BifoldMode.CODE, "代码", Icons.Outlined.Code) {
                         switchMode(BifoldMode.CODE)
@@ -305,8 +312,15 @@ fun IdeScreen() {
             ) { ready ->
                 val open = project
                 if (!ready || open == null) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
+                    if (session.loading) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                    } else {
+                        WelcomeScreen(
+                            onPickTemplate = { id -> session.create(id, Templates.byId(id)?.name ?: "未命名") },
+                            onCreateBlank = { session.create("blank", "我的网页") },
+                        )
                     }
                     return@Crossfade
                 }
@@ -489,7 +503,7 @@ fun IdeScreen() {
 }
 
 @Composable
-private fun ProjectTitle(name: String, path: String, onClick: () -> Unit) {
+private fun ProjectTitle(name: String, path: String, hasProject: Boolean = true, onClick: () -> Unit) {
     Row(
         Modifier
             .clip(MaterialTheme.shapes.medium)
@@ -513,7 +527,7 @@ private fun ProjectTitle(name: String, path: String, onClick: () -> Unit) {
                 label = "path",
             ) { shown ->
                 Text(
-                    shown.ifBlank { "未打开文件" },
+                    shown.ifBlank { if (hasProject) "未打开文件" else "挑一个开始" },
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,

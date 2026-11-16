@@ -51,9 +51,14 @@ object ProjectStore {
     private const val PREFS = "dev.webviewide.session"
     private const val CURRENT = "current"
 
-    fun open(context: Context): WebProject = current(context)
+    fun open(context: Context): WebProject? = current(context)
 
-    fun current(context: Context): WebProject {
+    /**
+     * The project to resume, or null on a fresh install. Returning null (instead
+     * of silently creating a blank toy project) lets the UI show the welcome
+     * screen so a first-time user picks a real starting point.
+     */
+    fun current(context: Context): WebProject? {
         val root = root(context)
         val saved = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(CURRENT, null)
         val dir = saved?.let { File(root, it) }?.takeIf { File(it, "project.json").isFile }
@@ -63,7 +68,7 @@ object ProjectStore {
             remember(context, existing.first().id)
             return existing.first()
         }
-        return create(context, "blank", "首页")
+        return null
     }
 
     fun list(context: Context): List<WebProject> {
@@ -75,7 +80,7 @@ object ProjectStore {
             .orEmpty()
     }
 
-    fun open(context: Context, id: String): WebProject {
+    fun open(context: Context, id: String): WebProject? {
         val dir = File(root(context), id)
         if (!File(dir, "project.json").isFile) return current(context)
         remember(context, id)
@@ -137,10 +142,12 @@ object ProjectStore {
         return next
     }
 
-    fun delete(context: Context, project: WebProject): WebProject {
+    fun delete(context: Context, project: WebProject): WebProject? {
         project.dir.deleteRecursively()
         val rest = list(context)
-        return if (rest.isEmpty()) create(context, "blank", "首页") else open(context, rest.first().id)
+        // Deleting the last project returns to the welcome screen rather than
+        // silently materialising another blank demo.
+        return if (rest.isEmpty()) null else open(context, rest.first().id)
     }
 
     fun adopt(context: Context, name: String, fill: (File) -> Unit): WebProject {

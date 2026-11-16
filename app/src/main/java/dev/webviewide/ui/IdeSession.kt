@@ -46,6 +46,8 @@ class IdeSession(
     private val scope: CoroutineScope,
 ) {
     var project by mutableStateOf<WebProject?>(null)
+    /** True until the first project lookup finishes; distinguishes loading from a fresh install. */
+    var loading by mutableStateOf(true)
     var current by mutableStateOf<File?>(null)
     var draft by mutableStateOf("")
     var status by mutableStateOf<String?>(null)
@@ -611,7 +613,19 @@ class IdeSession(
 
     fun webView(): WebView? = liveWeb?.get()
 
-    private fun show(next: WebProject) {
+    private fun show(next: WebProject?) {
+        if (next == null) {
+            // Fresh install: no project yet, the welcome screen takes over.
+            project = null
+            current = null
+            draft = ""
+            url = null
+            lanUrl = null
+            status = null
+            server.stop()
+            loading = false
+            return
+        }
         if (lastProjectId != null && lastProjectId != next.id &&
             !WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE)
         ) {
@@ -622,6 +636,7 @@ class IdeSession(
         }
         lastProjectId = next.id
         project = next
+        loading = false
         expanded = emptySet()
         treeTick += 1
         val entry = File(next.serveDir, next.entryFile)
