@@ -30,6 +30,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AspectRatio
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Language
@@ -204,19 +205,31 @@ fun WebPreview(
     }
 
     Column(modifier) {
+        // In a narrow split pane the labelled buttons overflow; fall back to
+        // icon-only controls (console keeps an error badge).
+        androidx.compose.foundation.layout.BoxWithConstraints(
+            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+        ) {
+        val compact = maxWidth < 300.dp
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box {
                 var widthMenu by remember { mutableStateOf(false) }
+                if (compact) {
+                    FilledTonalIconButton(onClick = { widthMenu = true }) {
+                        Icon(Icons.Outlined.AspectRatio, contentDescription = "预览宽度")
+                    }
+                } else {
                 FilledTonalButton(
                     onClick = { widthMenu = true },
                     contentPadding = PaddingValues(horizontal = 16.dp),
                 ) {
                     Text(viewports.firstOrNull { it.first == viewport }?.second ?: "满宽", maxLines = 1, softWrap = false)
                     Icon(Icons.Outlined.ExpandMore, contentDescription = null, modifier = Modifier.padding(start = 4.dp))
+                }
                 }
                 DropdownMenu(expanded = widthMenu, onDismissRequest = { widthMenu = false }) {
                     viewports.forEach { (width, label) ->
@@ -236,15 +249,30 @@ fun WebPreview(
                 }
             }
             Spacer(Modifier.weight(1f))
-            FilledTonalButton(onClick = { showConsole = !showConsole }) {
-                Icon(Icons.Outlined.Terminal, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    if (errorCount > 0) "控制台 · $errorCount 个错误" else "控制台",
-                    maxLines = 1,
-                    softWrap = false,
-                )
+            if (compact) {
+                androidx.compose.material3.BadgedBox(
+                    badge = {
+                        if (errorCount > 0) {
+                            androidx.compose.material3.Badge { Text(errorCount.toString()) }
+                        }
+                    },
+                ) {
+                    FilledTonalIconButton(onClick = { showConsole = !showConsole }) {
+                        Icon(Icons.Outlined.Terminal, contentDescription = "控制台")
+                    }
+                }
+            } else {
+                FilledTonalButton(onClick = { showConsole = !showConsole }) {
+                    Icon(Icons.Outlined.Terminal, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        if (errorCount > 0) "控制台 · $errorCount 个错误" else "控制台",
+                        maxLines = 1,
+                        softWrap = false,
+                    )
+                }
             }
+        }
         }
         AnimatedVisibility(
             visible = progress in 1..99,
