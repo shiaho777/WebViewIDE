@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>React</title>
+  <title>React 待办</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -12,18 +12,106 @@
   <script src="react-dom.production.min.js"></script>
   <script src="htm.umd.js"></script>
   <script>
+    // htm 让我们用模板字符串写接近 JSX 的界面，手机上不需要编译步骤。
     const html = htm.bind(React.createElement);
+    const { useState, useEffect, useMemo } = React;
+    const KEY = "react_todos_v1";
+
     function App() {
-      const [count, setCount] = React.useState(0);
+      const [todos, setTodos] = useState(() => {
+        try {
+          return JSON.parse(localStorage.getItem(KEY) || "[]");
+        } catch {
+          return [];
+        }
+      });
+      const [draft, setDraft] = useState("");
+      const [filter, setFilter] = useState("all");
+
+      // 每次 todos 变化就写回本地存储。
+      useEffect(() => {
+        localStorage.setItem(KEY, JSON.stringify(todos));
+      }, [todos]);
+
+      const visible = useMemo(() => {
+        if (filter === "active") return todos.filter((t) => !t.done);
+        if (filter === "done") return todos.filter((t) => t.done);
+        return todos;
+      }, [todos, filter]);
+
+      const left = todos.filter((t) => !t.done).length;
+
+      const add = (e) => {
+        e.preventDefault();
+        const text = draft.trim();
+        if (!text) return;
+        setTodos([...todos, { id: Date.now(), text, done: false }]);
+        setDraft("");
+      };
+      const toggle = (id) =>
+        setTodos(todos.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
+      const remove = (id) => setTodos(todos.filter((t) => t.id !== id));
+
+      const filters = [
+        { id: "all", label: "全部" },
+        { id: "active", label: "未完成" },
+        { id: "done", label: "已完成" },
+      ];
+
       return html`
         <main>
-          <p class="mark">React</p>
-          <h1>写在手机上的 React</h1>
-          <p>用 htm 写界面，语法接近 JSX，手机上不用编译。</p>
-          <button type="button" onClick=${() => setCount(count + 1)}>点过 ${count} 次</button>
+          <p class="mark">React · htm，免编译</p>
+          <h1>今天要做的事</h1>
+
+          <form class="entry" onSubmit=${add}>
+            <input
+              value=${draft}
+              onChange=${(e) => setDraft(e.target.value)}
+              placeholder="添加一件事"
+              maxlength="40"
+            />
+            <button type="submit">添加</button>
+          </form>
+
+          <div class="filters">
+            ${filters.map(
+              (f) => html`
+                <button
+                  key=${f.id}
+                  class=${filter === f.id ? "on" : ""}
+                  onClick=${() => setFilter(f.id)}
+                >
+                  ${f.label}
+                </button>
+              `
+            )}
+          </div>
+
+          <ul class="list">
+            ${visible.map(
+              (t) => html`
+                <li key=${t.id} class=${t.done ? "done" : ""}>
+                  <label>
+                    <input type="checkbox" checked=${t.done} onChange=${() => toggle(t.id)} />
+                    <span>${t.text}</span>
+                  </label>
+                  <button class="del" onClick=${() => remove(t.id)} aria-label="删除">×</button>
+                </li>
+              `
+            )}
+          </ul>
+          ${visible.length === 0 && html`<p class="empty">这里空空的，先加一件事吧。</p>`}
+
+          <footer>
+            <span>还剩 ${left} 件</span>
+            <button class="mini" onClick=${() => setTodos(todos.filter((t) => !t.done))}>
+              清掉已完成
+            </button>
+          </footer>
         </main>
       `;
     }
+
     ReactDOM.createRoot(document.getElementById("root")).render(html`<${App} />`);
   </script>
 </body>
