@@ -59,8 +59,16 @@ function post(type: string, payload: Record<string, unknown>, id?: number): void
   window.WviBridge?.post(JSON.stringify({ id: id ?? 0, type, payload }));
 }
 
+/**
+ * In a narrow split pane on a phone, soft-wrapping breaks lines every few
+ * characters and code becomes unreadable. Below this width keep long lines
+ * intact and scroll horizontally instead.
+ */
+const WRAP_MIN_WIDTH = 420;
+
 const languageConf = new Compartment();
 const themeConf = new Compartment();
+const wrapConf = new Compartment();
 
 function languageFor(kind: string) {
   switch (kind) {
@@ -168,7 +176,7 @@ const view = new EditorView({
       highlightActiveLine(),
       indentUnit.of("  "),
       EditorState.tabSize.of(2),
-      EditorView.lineWrapping,
+      wrapConf.of(window.innerWidth >= WRAP_MIN_WIDTH ? EditorView.lineWrapping : []),
       keymap.of([
         // On soft keyboards Tab must be acceptable as completion too.
         { key: "Tab", run: acceptCompletion },
@@ -309,6 +317,8 @@ window.__wviReceive = (json: string) => {
 // Pixel-size the editor root: percentage heights on html/body break text
 // rendering on some Android WebViews, so we never touch html/body and size
 // the root from the live viewport instead.
+let wrapping = window.innerWidth >= WRAP_MIN_WIDTH;
+
 function fit(): void {
   const el = view.dom;
   el.style.position = "absolute";
@@ -316,6 +326,11 @@ function fit(): void {
   el.style.left = "0";
   el.style.width = window.innerWidth + "px";
   el.style.height = window.innerHeight + "px";
+  const wantWrap = window.innerWidth >= WRAP_MIN_WIDTH;
+  if (wantWrap !== wrapping) {
+    wrapping = wantWrap;
+    view.dispatch({ effects: wrapConf.reconfigure(wantWrap ? EditorView.lineWrapping : []) });
+  }
   view.requestMeasure();
 }
 window.addEventListener("resize", fit);
