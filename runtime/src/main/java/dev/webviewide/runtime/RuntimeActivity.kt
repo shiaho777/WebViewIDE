@@ -31,7 +31,6 @@ import androidx.webkit.WebViewFeature
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
-import java.net.URLDecoder
 import kotlin.concurrent.thread
 import org.json.JSONObject
 
@@ -64,6 +63,25 @@ class RuntimeActivity : Activity() {
                 view: WebView,
                 request: WebResourceRequest,
             ): WebResourceResponse? = loader.shouldInterceptRequest(request.url)
+
+            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                val url = request.url
+                // In-app pages live on the asset host; everything else (external http(s)
+                // links, mailto:, tel:, payment schemes...) belongs to other apps.
+                if (!RuntimeNavigation.shouldOpenExternally(url.scheme, url.host, request.isForMainFrame)) return false
+                openExternally(url)
+                return true
+            }
+
+            override fun onReceivedError(
+                view: WebView,
+                request: WebResourceRequest,
+                error: android.webkit.WebResourceError,
+            ) {
+                if (!request.isForMainFrame) return
+                val failed = request.url.toString()
+                view.loadDataWithBaseURL(null, RuntimeErrors.page(failed), "text/html", "utf-8", null)
+            }
         }
         view.setDownloadListener { url, _, disposition, mime, _ ->
             if (!pageConfig.optBoolean("downloads", true)) return@setDownloadListener
@@ -162,6 +180,13 @@ class RuntimeActivity : Activity() {
         }
     }
 
+    private fun openExternally(url: Uri) {
+        val intent = Intent(Intent.ACTION_VIEW, url)
+        runCatching { startActivity(intent) }.onFailure {
+            Toast.makeText(this, "没有应用能打开这个链接", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     private fun readConfig(): PageConfig {
         val raw = runCatching {
             assets.open("webcfg.json").bufferedReader().use { it.readText() }
@@ -248,7 +273,7 @@ class RuntimeActivity : Activity() {
         }
 
         override fun onGeolocationPermissionsShowPrompt(origin: String?, callback: GeolocationPermissions.Callback?) {
-            if (!pageConfig.optBoolean("geolocation", true) || origin == null || callback == null) {
+            if (!pageConfig.optBoolean("geolocation", false) || origin == null || callback == null) {
                 callback?.invoke(origin, false, false)
                 return
             }
@@ -258,7 +283,7 @@ class RuntimeActivity : Activity() {
         }
 
         override fun onPermissionRequest(request: PermissionRequest) {
-            if (!pageConfig.optBoolean("cameraMic", true)) {
+            if (!pageConfig.optBoolean("cameraMic", false)) {
                 request.deny()
                 return
             }
@@ -307,7 +332,12 @@ class RuntimeActivity : Activity() {
             val popup = WebView(view.context)
             popup.webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(popupView: WebView, request: WebResourceRequest): Boolean {
-                    view.loadUrl(request.url.toString())
+                    val url = request.url
+                    if (RuntimeNavigation.shouldOpenExternally(url.scheme, url.host, true)) {
+                        openExternally(url)
+                    } else {
+                        view.loadUrl(url.toString())
+                    }
                     popup.destroy()
                     return true
                 }
@@ -382,10 +412,10 @@ class RuntimeActivity : Activity() {
                 "cache-only" -> WebSettings.LOAD_CACHE_ONLY
                 else -> WebSettings.LOAD_DEFAULT
             }
-            settings.mixedContentMode = when (config.optString("mixedContent", "compatibility")) {
+            settings.mixedContentMode = when (config.optString("mixedContent", "never")) {
                 "always" -> WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                "never" -> WebSettings.MIXED_CONTENT_NEVER_ALLOW
-                else -> WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+                "compatibility" -> WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+                else -> WebSettings.MIXED_CONTENT_NEVER_ALLOW
             }
             if (web.getTag(DEFAULT_UA) == null) web.setTag(DEFAULT_UA, settings.userAgentString)
             val fallback = web.getTag(DEFAULT_UA) as? String
@@ -414,8 +444,8 @@ class RuntimeActivity : Activity() {
                 )
             }
             CookieManager.getInstance().setAcceptCookie(true)
-            CookieManager.getInstance().setAcceptThirdPartyCookies(web, config.optBoolean("thirdPartyCookies", true))
-            WebView.setWebContentsDebuggingEnabled(config.optBoolean("remoteDebugging", true))
+            CookieManager.getInstance().setAcceptThirdPartyCookies(web, config.optBoolean("thirdPartyCookies", false))
+            WebView.setWebContentsDebuggingEnabled(config.optBoolean("remoteDebugging", false))
         }
 
         private fun setHiddenBool(settings: WebSettings, name: String, value: Boolean) {
@@ -425,19 +455,7 @@ class RuntimeActivity : Activity() {
             }
         }
 
-        private fun cleanPath(raw: String): String? {
-            val decoded = runCatching { URLDecoder.decode(raw, Charsets.UTF_8.name()) }.getOrNull() ?: return null
-            val parts = decoded.replace('\\', '/').split('/').filter { it.isNotEmpty() && it != "." }
-            val stack = ArrayDeque<String>()
-            for (part in parts) {
-                if (part == ".." || part.contains('\u0000')) {
-                    if (part == ".." && stack.isNotEmpty()) stack.removeLast() else return null
-                } else {
-                    stack.addLast(part)
-                }
-            }
-            return stack.joinToString("/")
-        }
+        private fun cleanPath(raw: String): String? = RuntimePaths.clean(raw)
 
         private fun mimeOf(name: String): String = when (name.substringAfterLast('.', "").lowercase()) {
             "html", "htm" -> "text/html"

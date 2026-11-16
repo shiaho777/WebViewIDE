@@ -50,8 +50,54 @@ class ProjectLogicTest {
         assertFalse(config.extraPermissions().any { it.contains("LOCATION") })
         assertTrue(config.extraPermissions().contains("android.permission.CAMERA"))
         assertTrue(config.extraPermissions().contains("android.permission.RECORD_AUDIO"))
-        val both = WebViewConfig()
+        val both = WebViewConfig(geolocation = true, cameraMic = true)
         assertTrue(both.extraPermissions().contains("android.permission.ACCESS_FINE_LOCATION"))
+    }
+
+    @Test fun newProjectsGetSecureDefaults() {
+        val config = WebViewConfig()
+        assertFalse(config.remoteDebugging)
+        assertFalse(config.geolocation)
+        assertFalse(config.cameraMic)
+        assertFalse(config.thirdPartyCookies)
+        assertEquals(WebViewConfig.MIXED_NEVER, config.mixedContent)
+        assertTrue(config.extraPermissions().isEmpty())
+    }
+
+    @Test fun legacyConfigsKeepPermissiveFallbacks() {
+        // Configs saved before the secure-default flip may lack these keys.
+        val legacy = WebViewConfig.fromMap(mapOf("javaScript" to true, "textZoom" to 100))
+        assertTrue(legacy.remoteDebugging)
+        assertTrue(legacy.geolocation)
+        assertTrue(legacy.cameraMic)
+        assertTrue(legacy.thirdPartyCookies)
+        assertEquals(WebViewConfig.MIXED_COMPAT, legacy.mixedContent)
+        // Explicit values always win over the fallback.
+        val explicit = WebViewConfig.fromMap(
+            mapOf("remoteDebugging" to false, "geolocation" to false, "mixedContent" to "never"),
+        )
+        assertFalse(explicit.remoteDebugging)
+        assertFalse(explicit.geolocation)
+        assertEquals(WebViewConfig.MIXED_NEVER, explicit.mixedContent)
+    }
+
+    @Test fun developerModeAndSecureDefaultsToggle() {
+        val dev = WebViewConfig().developerMode()
+        assertTrue(dev.remoteDebugging)
+        assertTrue(dev.geolocation)
+        assertTrue(dev.cameraMic)
+        assertTrue(dev.thirdPartyCookies)
+        assertEquals(WebViewConfig.MIXED_COMPAT, dev.mixedContent)
+        val back = dev.secureDefaults()
+        assertFalse(back.remoteDebugging)
+        assertFalse(back.geolocation)
+        assertFalse(back.cameraMic)
+        assertFalse(back.thirdPartyCookies)
+        assertEquals(WebViewConfig.MIXED_NEVER, back.mixedContent)
+        // Unrelated customizations survive both toggles.
+        val custom = WebViewConfig(textZoom = 130, userAgent = WebViewConfig.UA_DESKTOP)
+        assertEquals(130, custom.developerMode().secureDefaults().textZoom)
+        assertEquals(WebViewConfig.UA_DESKTOP, custom.developerMode().secureDefaults().userAgent)
     }
 
     @Test fun packageNames() {

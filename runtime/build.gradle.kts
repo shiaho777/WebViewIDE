@@ -46,6 +46,8 @@ android {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.webkit)
+
+    testImplementation(libs.junit4)
 }
 
 tasks.register<Copy>("syncRuntimeTemplate") {
