@@ -33,6 +33,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Verify committed editor bundle matches sources
         run: node tools/editor/verify.mjs
+      - name: Editor policy tests (Node built-in runner, no deps)
+        run: node --test tools/editor/test/*.test.mjs
       - name: Unit tests, runtime template, and debug APKs
         run: ./gradlew :app:testDebugUnitTest :runtime:testDebugUnitTest :runtime:syncRuntimeTemplate :app:assembleDebug :runtime:assembleDebug :app:assembleDebugAndroidTest --stacktrace
       - name: Spot-check template signature

@@ -73,6 +73,18 @@ class BifoldLayoutTest {
         }
     }
 
+    @Test fun settledFacesMeasureAtTheirOwnSlotWidth() {
+        // Regression: a settled face must be measured at its live slot, not at
+        // a stale wider endpoint, or the toolbar and the WebView end up with
+        // different widths (toolbar half-width, WebView clipped).
+        for (f in listOf(0f, 0.2f, 0.5f, 0.8f, 1f)) {
+            val live = bifoldSpans(f, 1080f, 22f)
+            val settled = bifoldMeasureSpans(f, f, 1080f, 22f)
+            assertEquals("code at $f", live.code, settled.code, 0.01f)
+            assertEquals("preview at $f", live.preview, settled.preview, 0.01f)
+        }
+    }
+
     @Test fun previewContentStaysCenteredInTheOpeningSlot() {
         assertEquals(0, bifoldPreviewOffsetPx(489, 489))
         assertEquals(-255, bifoldPreviewOffsetPx(489, 1000))

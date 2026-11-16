@@ -5,7 +5,8 @@
   "description": "CodeMirror 6 bundle for the WebViewIDE editor face. Build output is committed to app/src/main/assets/editor/ so the Android build needs no Node.",
   "scripts": {
     "build": "node build.mjs",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.18.6",
