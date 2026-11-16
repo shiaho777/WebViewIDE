@@ -123,16 +123,21 @@ internal fun TemplateCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            // A quiet tinted chip instead of a vivid two-color gradient.
             Box(
                 Modifier
                     .size(44.dp)
                     .clip(MaterialTheme.shapes.small)
-                    .background(
-                        androidx.compose.ui.graphics.Brush.linearGradient(
-                            listOf(Color(template.accent), Color(template.accent2)),
-                        ),
-                    ),
-            )
+                    .background(Color(template.accent).copy(alpha = 0.16f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    Modifier
+                        .size(12.dp)
+                        .clip(androidx.compose.foundation.shape.CircleShape)
+                        .background(Color(template.accent).copy(alpha = 0.55f)),
+                )
+            }
             Column(Modifier.weight(1f)) {
                 Text(template.name, style = MaterialTheme.typography.titleSmall)
                 Text(

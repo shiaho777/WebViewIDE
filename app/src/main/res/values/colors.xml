@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Brand indigo, shared by the launcher icon background and the splash. -->
-    <color name="brand_splash">#185FA5</color>
+    <color name="brand_splash">#61809B</color>
 </resources>

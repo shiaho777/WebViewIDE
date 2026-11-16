@@ -138,20 +138,22 @@ function themeFor(p: Palette) {
   return [base, syntaxHighlighting(highlight)];
 }
 
+// Fallback only: the app overrides this from its Material scheme. Kept in the
+// same calm, low-saturation family so a missing theme message never looks loud.
 const defaultPalette: Palette = {
-  bg: "#121316",
-  fg: "#e3e2e6",
-  gutter: "#1a1b1f",
-  gutterFg: "#8d9199",
-  activeLine: "#1f2126",
-  selection: "#33415e",
-  cursor: "#a8c7fa",
-  keyword: "#a8c7fa",
-  string: "#7ddc8a",
-  number: "#f2b8b5",
-  comment: "#8d9199",
-  tag: "#a8c7fa",
-  attr: "#c5a8fa",
+  bg: "#1c1f23",
+  fg: "#d6dae0",
+  gutter: "#22262a",
+  gutterFg: "#8b9299",
+  activeLine: "#262a2f",
+  selection: "#3b4a58",
+  cursor: "#afc4d6",
+  keyword: "#afc4d6",
+  string: "#a8bfae",
+  number: "#c9b8a8",
+  comment: "#8b9299",
+  tag: "#afc4d6",
+  attr: "#b6bcc9",
 };
 
 let changeTimer: number | undefined;
