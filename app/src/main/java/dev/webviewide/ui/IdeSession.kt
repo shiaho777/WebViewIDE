@@ -28,6 +28,7 @@ import dev.webviewide.project.DraftSaver
 import dev.webviewide.project.ExternalChangeException
 import dev.webviewide.project.ProjectIds
 import dev.webviewide.project.ProjectStore
+import dev.webviewide.project.ProjectZip
 import dev.webviewide.project.WebProject
 import dev.webviewide.project.isRasterImage
 import dev.webviewide.server.LocalPreviewServer
@@ -448,18 +449,39 @@ class IdeSession(
                 runCatching {
                     flushBlocking()
                     app.contentResolver.openOutputStream(uri)?.use { out ->
-                        java.util.zip.ZipOutputStream(out).use { zip ->
-                            ProjectStore.listUnder(open.srcDir).forEach { f ->
-                                val rel = ProjectStore.relative(open, f)
-                                zip.putNextEntry(java.util.zip.ZipEntry(rel))
-                                f.inputStream().use { it.copyTo(zip) }
-                                zip.closeEntry()
-                            }
-                        }
+                        ProjectZip.write(open.srcDir, ProjectStore.listUnder(open.srcDir), out)
                     } ?: error("没能写入导出位置")
                 }
             }
             status = outcome.fold({ "项目已导出为 zip" }, { it.message ?: "导出失败" })
+        }
+    }
+
+    /** One-tap hand-off: zip into the share cache, then open the system share sheet. */
+    fun shareProjectZip() {
+        val open = project ?: return
+        scope.launch {
+            val outcome = withContext(Dispatchers.IO) {
+                runCatching {
+                    flushBlocking()
+                    val dir = File(app.cacheDir, "share").apply { mkdirs() }
+                    // Keep only the newest archive so the share cache stays bounded.
+                    dir.listFiles()?.forEach { it.delete() }
+                    val safeName = open.name.replace(Regex("""[^\w一-龥.-]"""), "_").ifBlank { "project" }
+                    val zip = File(dir, "$safeName.zip")
+                    zip.outputStream().use { out ->
+                        ProjectZip.write(open.srcDir, ProjectStore.listUnder(open.srcDir), out)
+                    }
+                    zip
+                }
+            }
+            outcome.fold(
+                onSuccess = { zip ->
+                    status = "正在分享项目"
+                    ApkInstaller.shareFile(app, zip)
+                },
+                onFailure = { status = it.message ?: "分享失败" },
+            )
         }
     }
 

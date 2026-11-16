@@ -37,6 +37,7 @@ import androidx.compose.material.icons.outlined.DriveFileMove
 import androidx.compose.material.icons.outlined.DriveFileRenameOutline
 import androidx.compose.material.icons.outlined.FileOpen
 import androidx.compose.material.icons.outlined.FolderOpen
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Badge
@@ -501,13 +502,26 @@ internal fun ProjectSheet(
                         Text("删除项目")
                     }
                 }
-                OutlinedButton(
-                    onClick = { session.requestProjectExport() },
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Icon(Icons.Outlined.Archive, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
-                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                    Text("导出项目 zip")
+                    Button(
+                        onClick = { session.shareProjectZip() },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(Icons.Outlined.Share, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                        Text("分享项目")
+                    }
+                    OutlinedButton(
+                        onClick = { session.requestProjectExport() },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(Icons.Outlined.Archive, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                        Text("导出 zip")
+                    }
                 }
             }
         }
