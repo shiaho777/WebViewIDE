@@ -27,10 +27,32 @@ android {
                 keyPassword = System.getenv("RUNTIME_TEMPLATE_KEY_PASSWORD")
             } else {
                 val debug = getByName("debug")
-                storeFile = debug.storeFile
-                storePassword = debug.storePassword
-                keyAlias = debug.keyAlias
-                keyPassword = debug.keyPassword
+                val debugStore = debug.storeFile
+                if (debugStore != null && debugStore.isFile) {
+                    storeFile = debugStore
+                    storePassword = debug.storePassword
+                    keyAlias = debug.keyAlias
+                    keyPassword = debug.keyPassword
+                } else {
+                    // CI runners have no debug.keystore until a debug build runs;
+                    // generate a throwaway template identity on demand.
+                    val generated = layout.buildDirectory.file("signing/template-fallback.p12").get().asFile
+                    if (!generated.isFile) {
+                        generated.parentFile.mkdirs()
+                        providers.exec {
+                            commandLine(
+                                "keytool", "-genkeypair", "-keystore", generated.absolutePath,
+                                "-storetype", "PKCS12", "-storepass", "android", "-keypass", "android",
+                                "-alias", "template", "-keyalg", "RSA", "-keysize", "2048",
+                                "-validity", "10000", "-dname", "CN=WebViewIDE Template,O=WebViewIDE,C=US",
+                            )
+                        }.result.get()
+                    }
+                    storeFile = generated
+                    storePassword = "android"
+                    keyAlias = "template"
+                    keyPassword = "android"
+                }
             }
         }
     }
