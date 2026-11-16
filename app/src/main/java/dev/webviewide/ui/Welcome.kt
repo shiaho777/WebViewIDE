@@ -33,7 +33,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.sp
+import dev.webviewide.R
 import dev.webviewide.project.Templates
 
 /**
@@ -79,14 +81,14 @@ internal fun WelcomeScreen(
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            "在手机上写网页，\n然后把它变成一个能安装的 App。",
+            stringResource(R.string.welcome_tagline),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(6.dp))
         Text(
-            "免 root · 全程离线 · 系统 WebView 渲染",
+            stringResource(R.string.welcome_pillars),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.primary,
             fontFamily = FontFamily.Monospace,
@@ -95,7 +97,7 @@ internal fun WelcomeScreen(
 
         Spacer(Modifier.height(28.dp))
         Text(
-            "先挑一个作品看看",
+            stringResource(R.string.welcome_pick_title),
             style = MaterialTheme.typography.titleSmall,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -113,7 +115,7 @@ internal fun WelcomeScreen(
         ) {
             Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
             Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-            Text("从空白页开始")
+            Text(stringResource(R.string.welcome_start_blank))
         }
         Spacer(Modifier.height(10.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
@@ -123,7 +125,7 @@ internal fun WelcomeScreen(
         }
         Spacer(Modifier.height(18.dp))
         Text(
-            "示例可以直接改：改完点运行看效果，点打包生成 APK。",
+            stringResource(R.string.welcome_hint),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,

@@ -4,4 +4,15 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">true</item>
     </style>
+
+    <!--
+      Cold-start splash. Without this the launcher shows a bare white window
+      before Compose draws. The brand background matches the launcher icon so
+      the transition reads as one surface.
+    -->
+    <style name="Theme.WebViewIDE.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/brand_splash</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo</item>
+        <item name="postSplashScreenTheme">@style/Theme.WebViewIDE</item>
+    </style>
 </resources>

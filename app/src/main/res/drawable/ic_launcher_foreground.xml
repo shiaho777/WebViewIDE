@@ -1,16 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Adaptive-icon foreground. The previous version used open paths with
+  fillColor, which have no area and rendered invisibly; these are closed
+  polygons so the </> mark actually shows. Keep artwork inside the 72dp
+  safe zone (18..90 of the 108dp canvas).
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+
+    <!-- left angle bracket -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M42,40 L30,54 L42,68" />
+        android:pathData="M43.5,38.5 L47.5,42.5 L37,54 L47.5,65.5 L43.5,69.5 L29,54 Z" />
+
+    <!-- right angle bracket -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M66,40 L78,54 L66,68" />
+        android:pathData="M64.5,38.5 L79,54 L64.5,69.5 L60.5,65.5 L71,54 L60.5,42.5 Z" />
+
+    <!-- slash: mint accent, reads as the "run/ship" stroke -->
     <path
         android:fillColor="#9FE1CB"
-        android:pathData="M58,34 L50,74 L54,74 L62,34 Z" />
+        android:pathData="M57.5,33 L62.5,34.4 L50.5,75 L45.5,73.6 Z" />
 </vector>

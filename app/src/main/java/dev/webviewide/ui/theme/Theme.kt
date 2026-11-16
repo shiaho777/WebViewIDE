@@ -89,7 +89,10 @@ private val DarkColors = darkColorScheme(
 @Composable
 fun WebViewIDETheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    // Keep the brand palette by default: the launcher icon, splash and editor
+    // theme all use the same indigo, and a system wallpaper palette would make
+    // the app look unrelated to its own icon. Callers can still opt in.
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current

@@ -32,7 +32,11 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        // The about sheet reads VERSION_NAME / VERSION_CODE from BuildConfig.
+        buildConfig = true
+    }
     // AGP 9.4's lintVitalAnalyze reads src/main/assets (where syncRuntimeTemplate
     // writes template.apk) and trips Gradle's implicit-dependency validation;
     // dependsOn/mustRunAfter on the lint task do not satisfy it. Release lint is
@@ -60,6 +64,7 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.webkit)
+    implementation(libs.androidx.core.splashscreen)
 
     implementation(files("libs/ARSCLib-1.4.0.jar"))
     implementation("com.android.tools.build:apksig:8.7.3")
