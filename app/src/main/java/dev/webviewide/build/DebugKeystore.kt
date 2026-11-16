@@ -74,20 +74,8 @@ object DebugKeystore {
             }.onFailure { errors += "$type: ${it.message}" }.getOrNull()
             if (identity != null) return identity
         }
-        storeFile.delete()
-        createPkcs12(storeFile)
-        File(storeFile.parentFile, MARKER).writeText("pkcs12")
-        val ks = KeyStore.getInstance("PKCS12")
-        FileInputStream(storeFile).use { ks.load(it, PASSWORD.toCharArray()) }
-        val key = ks.getKey(ALIAS, PASSWORD.toCharArray()) as PrivateKey
-        val chain = ks.getCertificateChain(ALIAS).map { it as X509Certificate }
-        return SigningIdentity(
-            keystore = storeFile,
-            storePassword = PASSWORD,
-            keyPassword = PASSWORD,
-            alias = ALIAS,
-            privateKey = key,
-            certificates = chain,
-        )
+        // Never silently regenerate: a new key would break in-place upgrades
+        // of every app previously signed on this device.
+        throw KeystoreException("本机调试密钥损坏（${errors.joinToString()}）。请导入自己的密钥库，或删除 signing 目录后重建。")
     }
 }

@@ -14,9 +14,14 @@ import androidx.compose.runtime.setValue
 import androidx.webkit.WebViewFeature
 import dev.webviewide.build.ApkInstaller
 import dev.webviewide.build.ApkPackager
+import dev.webviewide.build.ArtifactStore
+import dev.webviewide.build.BuildArtifact
 import dev.webviewide.build.BuildConfig
 import dev.webviewide.build.DebugKeystore
+import dev.webviewide.build.KeystoreException
+import dev.webviewide.build.KeystoreManager
 import dev.webviewide.build.Orientation
+import dev.webviewide.build.SignMode
 import dev.webviewide.project.DocumentImport
 import dev.webviewide.project.DraftSaver
 import dev.webviewide.project.ProjectIds
@@ -49,6 +54,88 @@ class IdeSession(
     var treeTick by mutableIntStateOf(0)
     var expanded by mutableStateOf(setOf<String>())
     var pendingGotoLine by mutableIntStateOf(0)
+    var artifacts by mutableStateOf(listOf<BuildArtifact>())
+    var signingKeys by mutableStateOf(listOf<KeystoreManager.StoredKey>())
+
+    fun refreshBuildState() {
+        artifacts = ArtifactStore.list(app)
+        signingKeys = KeystoreManager.list(app)
+    }
+
+    fun importKeystore(uri: Uri, storePassword: String, alias: String, keyPassword: String) {
+        scope.launch {
+            val outcome = withContext(Dispatchers.IO) {
+                runCatching {
+                    val bytes = app.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                        ?: throw KeystoreException("没读到密钥文件")
+                    KeystoreManager.import(app, bytes, storePassword, alias, keyPassword)
+                }
+            }
+            outcome.fold(
+                onSuccess = { entry ->
+                    refreshBuildState()
+                    project?.let { update(it.copy(signingFingerprint = entry.fingerprint), false) }
+                    status = "密钥已导入并绑定到当前项目"
+                },
+                onFailure = { status = it.message ?: "密钥导入失败" },
+            )
+        }
+    }
+
+    fun bindKeystore(fingerprint: String) {
+        project?.let { update(it.copy(signingFingerprint = fingerprint), false) }
+        status = if (fingerprint.isBlank()) "已改回本机调试签名" else "已绑定签名密钥"
+    }
+
+    fun exportKeystore(fingerprint: String, uri: Uri) {
+        scope.launch {
+            val outcome = withContext(Dispatchers.IO) {
+                runCatching {
+                    val entry = KeystoreManager.list(app).firstOrNull { it.fingerprint == fingerprint }
+                        ?: throw KeystoreException("没有这个密钥")
+                    val src = File(KeystoreManager.dir(app), entry.fileName)
+                    app.contentResolver.openOutputStream(uri)?.use { out -> src.inputStream().use { it.copyTo(out) } }
+                        ?: throw KeystoreException("没能写入导出位置")
+                }
+            }
+            status = outcome.fold({ "密钥库已导出（密码请自行保管）" }, { it.message ?: "导出失败" })
+        }
+    }
+
+    fun exportArtifact(id: String, uri: Uri) {
+        scope.launch {
+            val outcome = withContext(Dispatchers.IO) {
+                runCatching {
+                    val artifact = ArtifactStore.list(app).firstOrNull { it.id == id }
+                        ?: error("没有这个安装包")
+                    app.contentResolver.openOutputStream(uri)?.use { out ->
+                        artifact.file.inputStream().use { it.copyTo(out) }
+                    } ?: error("没能写入导出位置")
+                }
+            }
+            status = outcome.fold({ "安装包已导出" }, { it.message ?: "导出失败" })
+        }
+    }
+
+    fun shareArtifact(id: String) {
+        val artifact = ArtifactStore.list(app).firstOrNull { it.id == id } ?: return
+        ApkInstaller.share(app, artifact.file)
+    }
+
+    fun deleteArtifact(id: String) {
+        ArtifactStore.remove(app, id)
+        artifacts = ArtifactStore.list(app)
+    }
+
+    fun installArtifact(id: String) {
+        val artifact = ArtifactStore.list(app).firstOrNull { it.id == id } ?: return
+        if (ApkInstaller.canRequestInstall(app)) {
+            ApkInstaller.install(app, artifact.file)
+        } else {
+            status = "请允许安装未知应用"
+            ApkInstaller.openInstallPermissionSettings(app)
+        }
+    }
 
     val server = LocalPreviewServer(
         clientScript = runCatching {
@@ -336,16 +423,25 @@ class IdeSession(
                 runCatching {
                     if (file != null) saver.save(file, snapshot, saving)
                     val fresh = project ?: open
-                    val out = File(File(app.cacheDir, "builds").apply { mkdirs() }, "${fresh.id}.apk")
-                    ApkPackager(app).packageApk(
+                    val userKey = KeystoreManager.resolve(app, fresh.signingFingerprint)
+                    if (fresh.signingFingerprint.isNotBlank() && userKey == null) {
+                        throw KeystoreException("绑定的签名密钥不可用，请在打包设置里重新选择")
+                    }
+                    val identity = userKey ?: DebugKeystore.getOrCreate(app)
+                    val signMode = if (userKey != null) SignMode.RELEASE else SignMode.DEBUG
+                    val code = if (fresh.autoVersionCode) fresh.versionCode + 1 else fresh.versionCode
+                    val stamp = System.currentTimeMillis()
+                    val out = File(ArtifactStore.dir(app), "${fresh.id}-$stamp.apk")
+                    val kind = ApkPackager(app).packageApk(
                         config = BuildConfig(
                             appName = fresh.name,
                             packageName = fresh.resolvedPackageName(),
                             versionName = fresh.versionName,
-                            versionCode = fresh.versionCode,
+                            versionCode = code,
                             entryFile = fresh.entryFile,
                             orientation = runCatching { Orientation.valueOf(fresh.orientation) }.getOrDefault(Orientation.AUTO),
                             abis = fresh.abis,
+                            signMode = signMode,
                             iconPath = fresh.iconPath,
                             iconBgColor = fresh.iconBgColor,
                             spaFallback = fresh.spaFallback,
@@ -355,15 +451,33 @@ class IdeSession(
                         srcDir = fresh.serveDir,
                         files = ProjectStore.listUnder(fresh.serveDir),
                         outFile = out,
-                        identity = DebugKeystore.getOrCreate(app),
+                        identity = identity,
                         projectDir = fresh.dir,
                     )
+                    ArtifactStore.record(
+                        app,
+                        BuildArtifact(
+                            id = "${fresh.id}-$stamp",
+                            appName = fresh.name,
+                            versionName = fresh.versionName,
+                            versionCode = code,
+                            kind = kind,
+                            sizeBytes = out.length(),
+                            createdAt = stamp,
+                            file = out,
+                        ),
+                    )
+                    if (fresh.autoVersionCode) {
+                        val bumped = ProjectStore.update(fresh.copy(versionCode = code))
+                        if (project?.id == bumped.id) project = bumped
+                    }
                     out
                 }
             }
             busy = false
             outcome.fold(
                 onSuccess = { apk ->
+                    artifacts = ArtifactStore.list(app)
                     if (ApkInstaller.canRequestInstall(app)) {
                         status = "已签名，正在打开安装"
                         ApkInstaller.install(app, apk)
@@ -377,6 +491,8 @@ class IdeSession(
             )
         }
     }
+
+
 
     fun copyUrl() {
         val text = lanUrl ?: url ?: return

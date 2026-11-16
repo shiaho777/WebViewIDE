@@ -16,6 +16,45 @@ android {
 
     signingConfigs {
         getByName("debug")
+        // CI/release can inject a dedicated template identity via env vars;
+        // local builds fall back to debug so no secrets are ever committed.
+        create("templateRelease") {
+            val store = System.getenv("RUNTIME_TEMPLATE_KEYSTORE")
+            if (store != null && file(store).isFile) {
+                storeFile = file(store)
+                storePassword = System.getenv("RUNTIME_TEMPLATE_STORE_PASSWORD")
+                keyAlias = System.getenv("RUNTIME_TEMPLATE_KEY_ALIAS")
+                keyPassword = System.getenv("RUNTIME_TEMPLATE_KEY_PASSWORD")
+            } else {
+                val debug = getByName("debug")
+                val debugStore = debug.storeFile
+                if (debugStore != null && debugStore.isFile) {
+                    storeFile = debugStore
+                    storePassword = debug.storePassword
+                    keyAlias = debug.keyAlias
+                    keyPassword = debug.keyPassword
+                } else {
+                    // CI runners have no debug.keystore until a debug build runs;
+                    // generate a throwaway template identity on demand.
+                    val generated = layout.buildDirectory.file("signing/template-fallback.p12").get().asFile
+                    if (!generated.isFile) {
+                        generated.parentFile.mkdirs()
+                        providers.exec {
+                            commandLine(
+                                "keytool", "-genkeypair", "-keystore", generated.absolutePath,
+                                "-storetype", "PKCS12", "-storepass", "android", "-keypass", "android",
+                                "-alias", "template", "-keyalg", "RSA", "-keysize", "2048",
+                                "-validity", "10000", "-dname", "CN=WebViewIDE Template,O=WebViewIDE,C=US",
+                            )
+                        }.result.get()
+                    }
+                    storeFile = generated
+                    storePassword = "android"
+                    keyAlias = "template"
+                    keyPassword = "android"
+                }
+            }
+        }
     }
 
     buildTypes {
@@ -26,7 +65,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("templateRelease")
         }
         debug {
             isMinifyEnabled = false

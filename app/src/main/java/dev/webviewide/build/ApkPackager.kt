@@ -56,9 +56,19 @@ class ApkPackager(private val context: Context) {
                 onLog("assembled unsigned apk (${humanSize(unsigned.length())})")
                 onPhase("package", "done")
 
+                val aligned = File(work, "aligned.apk")
+                onPhase("sign", "align")
+                runCatching { ZipAlign.align(unsigned, aligned) }
+                    .onFailure { onLog("align skipped: ${it.message}") }
+                val toSign = if (aligned.isFile && aligned.length() > 1024L && ZipAlign.verify(aligned)) {
+                    onLog("4-byte aligned")
+                    aligned
+                } else {
+                    unsigned
+                }
                 val signedTmp = File(work, "signed.apk")
                 onPhase("sign", "signing")
-                sign(unsigned, signedTmp, identity)
+                sign(toSign, signedTmp, identity)
                 if (!signedTmp.isFile || signedTmp.length() < 1024L) {
                     throw IllegalStateException("signing produced empty apk")
                 }
