@@ -215,7 +215,7 @@ fun WebPreview(
                     onClick = { widthMenu = true },
                     contentPadding = PaddingValues(horizontal = 16.dp),
                 ) {
-                    Text(viewports.firstOrNull { it.first == viewport }?.second ?: "满宽")
+                    Text(viewports.firstOrNull { it.first == viewport }?.second ?: "满宽", maxLines = 1, softWrap = false)
                     Icon(Icons.Outlined.ExpandMore, contentDescription = null, modifier = Modifier.padding(start = 4.dp))
                 }
                 DropdownMenu(expanded = widthMenu, onDismissRequest = { widthMenu = false }) {
@@ -239,7 +239,11 @@ fun WebPreview(
             FilledTonalButton(onClick = { showConsole = !showConsole }) {
                 Icon(Icons.Outlined.Terminal, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
-                Text(if (errorCount > 0) "控制台 · $errorCount 个错误" else "控制台")
+                Text(
+                    if (errorCount > 0) "控制台 · $errorCount 个错误" else "控制台",
+                    maxLines = 1,
+                    softWrap = false,
+                )
             }
         }
         AnimatedVisibility(
