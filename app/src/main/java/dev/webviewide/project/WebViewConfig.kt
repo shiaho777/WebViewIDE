@@ -4,8 +4,8 @@ data class WebViewConfig(
     val javaScript: Boolean = true,
     val domStorage: Boolean = true,
     val database: Boolean = true,
-    val thirdPartyCookies: Boolean = true,
-    val mixedContent: String = MIXED_COMPAT,
+    val thirdPartyCookies: Boolean = false,
+    val mixedContent: String = MIXED_NEVER,
     val zoom: Boolean = true,
     val displayZoomControls: Boolean = false,
     val wideViewport: Boolean = true,
@@ -17,15 +17,15 @@ data class WebViewConfig(
     val cacheMode: String = CACHE_DEFAULT,
     val userAgent: String = UA_MOBILE,
     val customUserAgent: String = "",
-    val remoteDebugging: Boolean = true,
+    val remoteDebugging: Boolean = false,
     val allowFileAccess: Boolean = false,
     val allowContentAccess: Boolean = true,
     val allowFileFromFile: Boolean = false,
     val javascriptCanOpenWindows: Boolean = true,
     val multipleWindows: Boolean = true,
     val blockNetwork: Boolean = false,
-    val geolocation: Boolean = true,
-    val cameraMic: Boolean = true,
+    val geolocation: Boolean = false,
+    val cameraMic: Boolean = false,
     val fileChooser: Boolean = true,
     val downloads: Boolean = true,
     val jsDialogs: Boolean = true,
@@ -65,6 +65,22 @@ data class WebViewConfig(
 
     fun encode(): String = encodeJson(toMap())
 
+    fun developerMode(): WebViewConfig = copy(
+        remoteDebugging = true,
+        thirdPartyCookies = true,
+        mixedContent = MIXED_COMPAT,
+        geolocation = true,
+        cameraMic = true,
+    )
+
+    fun secureDefaults(): WebViewConfig = copy(
+        remoteDebugging = false,
+        thirdPartyCookies = false,
+        mixedContent = MIXED_NEVER,
+        geolocation = false,
+        cameraMic = false,
+    )
+
     fun extraPermissions(): Set<String> = buildSet {
         if (geolocation) {
             add("android.permission.ACCESS_COARSE_LOCATION")
@@ -93,12 +109,14 @@ data class WebViewConfig(
         fun fromMap(map: Map<String, Any?>): WebViewConfig {
             if (map.isEmpty()) return WebViewConfig()
             val base = WebViewConfig()
+            // Missing keys come from configs saved before the secure-default flip:
+            // keep their old permissive values so existing projects don't change behavior.
             return base.copy(
                 javaScript = map.boolean("javaScript", base.javaScript),
                 domStorage = map.boolean("domStorage", base.domStorage),
                 database = map.boolean("database", base.database),
-                thirdPartyCookies = map.boolean("thirdPartyCookies", base.thirdPartyCookies),
-                mixedContent = map.string("mixedContent", base.mixedContent),
+                thirdPartyCookies = map.boolean("thirdPartyCookies", true),
+                mixedContent = map.string("mixedContent", MIXED_COMPAT),
                 zoom = map.boolean("zoom", base.zoom),
                 displayZoomControls = map.boolean("displayZoomControls", base.displayZoomControls),
                 wideViewport = map.boolean("wideViewport", base.wideViewport),
@@ -110,15 +128,15 @@ data class WebViewConfig(
                 cacheMode = map.string("cacheMode", base.cacheMode),
                 userAgent = map.string("userAgent", base.userAgent),
                 customUserAgent = map.string("customUserAgent", base.customUserAgent),
-                remoteDebugging = map.boolean("remoteDebugging", base.remoteDebugging),
+                remoteDebugging = map.boolean("remoteDebugging", true),
                 allowFileAccess = map.boolean("allowFileAccess", base.allowFileAccess),
                 allowContentAccess = map.boolean("allowContentAccess", base.allowContentAccess),
                 allowFileFromFile = map.boolean("allowFileFromFile", base.allowFileFromFile),
                 javascriptCanOpenWindows = map.boolean("javascriptCanOpenWindows", base.javascriptCanOpenWindows),
                 multipleWindows = map.boolean("multipleWindows", base.multipleWindows),
                 blockNetwork = map.boolean("blockNetwork", base.blockNetwork),
-                geolocation = map.boolean("geolocation", base.geolocation),
-                cameraMic = map.boolean("cameraMic", base.cameraMic),
+                geolocation = map.boolean("geolocation", true),
+                cameraMic = map.boolean("cameraMic", true),
                 fileChooser = map.boolean("fileChooser", base.fileChooser),
                 downloads = map.boolean("downloads", base.downloads),
                 jsDialogs = map.boolean("jsDialogs", base.jsDialogs),

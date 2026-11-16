@@ -587,6 +587,21 @@ internal fun SettingsSheet(
                     }
                 }
             }
+            SectionCard("开发者模式", Icons.Outlined.Build) {
+                Text(
+                    "新项目默认关闭远程调试、定位、摄像头麦克风、第三方 Cookie 和混合内容。开发调试时可一键放开，发布前建议恢复安全默认。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilledTonalButton(onClick = {
+                        onProject(project.copy(webview = config.developerMode()), false)
+                    }) { Text("一键放开") }
+                    OutlinedButton(onClick = {
+                        onProject(project.copy(webview = config.secureDefaults()), false)
+                    }) { Text("恢复安全默认") }
+                }
+            }
             SectionCard("页面能力", Icons.Outlined.Extension) {
                 webFlags.forEachIndexed { index, flag ->
                     ToggleRow(flag.label, flag.read(config)) { checked ->

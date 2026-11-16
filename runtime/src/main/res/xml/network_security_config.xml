@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Packaged pages are local assets, so cleartext is never needed for the
+     public internet. Only localhost helpers are exempted. Note: Android's
+     network security config cannot express IP ranges, so LAN http servers
+     are blocked by default too; use https for LAN endpoints. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+    </domain-config>
+</network-security-config>
