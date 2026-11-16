@@ -310,19 +310,19 @@ class IdeSession(
             if (saver.isSaved(saving)) return@launch
             val outcome = withContext(Dispatchers.IO) {
                 runCatching {
-                    saver.save(file, snapshot, saving) && SiteFiles.isInside(open.serveDir, file)
-                }
-            }
-            outcome.fold(
-                onSuccess = { served ->
-                    journal.clear()
+                    val served = saver.save(file, snapshot, saving) && SiteFiles.isInside(open.serveDir, file)
                     if (served && open.liveReload) {
                         val rel = runCatching { file.toRelativeString(open.serveDir).replace(File.separatorChar, '/') }
                             .getOrDefault("")
                         val cssOnly = file.extension.equals("css", ignoreCase = true)
+                        // SSE socket writes must stay off the main thread.
                         server.reload(rel, full = !cssOnly)
                     }
-                },
+                    served
+                }
+            }
+            outcome.fold(
+                onSuccess = { journal.clear() },
                 onFailure = {
                     status = it.message ?: "没能保存"
                     if (it is ExternalChangeException) journal.clear()
@@ -334,7 +334,7 @@ class IdeSession(
     fun runPreview() {
         flushBlocking()
         reloadKey += 1
-        server.reload()
+        scope.launch(Dispatchers.IO) { server.reload() }
     }
 
     fun select(file: File) {

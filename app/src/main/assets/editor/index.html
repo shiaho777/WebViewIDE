@@ -3,13 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<style>
-  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #121316; }
-  .cm-editor { height: 100%; }
-  .cm-editor.cm-focused { outline: none; }
-</style>
+<!--
+  NOTE: do NOT set height:100% / overflow:hidden on html or body here.
+  On some Android WebViews (e.g. 124 on API 35) that combination makes the
+  whole page's text rendering vanish (background paints, glyphs never do).
+  The editor root is sized in explicit pixels from window.innerWidth/Height
+  instead, and kept in sync on resize.
+-->
 </head>
-<body>
+<body style="margin:0">
 <script src="editor.bundle.js"></script>
 </body>
 </html>

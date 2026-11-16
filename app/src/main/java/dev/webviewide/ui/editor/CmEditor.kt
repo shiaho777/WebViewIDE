@@ -2,6 +2,7 @@ package dev.webviewide.ui.editor
 
 import android.annotation.SuppressLint
 import android.webkit.JavascriptInterface
+import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.animation.AnimatedVisibility
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -39,6 +41,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -69,6 +72,7 @@ fun CmCodeEditor(
     val scheme = MaterialTheme.colorScheme
     val palette = remember(scheme) { scheme.editorPalette() }
     var ready by remember(path) { mutableStateOf(false) }
+    var recoveryTick by remember(path) { mutableIntStateOf(0) }
     var finding by remember(path) { mutableStateOf(false) }
     var replacing by remember(path) { mutableStateOf(false) }
     var query by remember(path) { mutableStateOf("") }
@@ -110,8 +114,11 @@ fun CmCodeEditor(
                     cursor,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 8.dp).weight(1f),
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(start = 8.dp).weight(1f, fill = false),
                 )
+                Spacer(Modifier.weight(1f))
                 IconButton(onClick = { send(EditorBridge.simple(id.incrementAndGet(), "undo")) }) {
                     Icon(Icons.Outlined.Undo, contentDescription = "撤销", modifier = Modifier.size(20.dp))
                 }
@@ -185,6 +192,7 @@ fun CmCodeEditor(
             }
         }
         Box(Modifier.weight(1f).fillMaxSize()) {
+            androidx.compose.runtime.key(recoveryTick) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
                 factory = { context ->
@@ -235,12 +243,24 @@ fun CmCodeEditor(
                                 }
                             }
                         }, "WviBridge")
-                        webViewClient = WebViewClient()
+                        webViewClient = object : WebViewClient() {
+                            override fun onRenderProcessGone(view: WebView?, detail: android.webkit.RenderProcessGoneDetail?): Boolean {
+                                // Renderer died (OOM / WebView bug): recover instead of
+                                // leaving a dead black surface behind.
+                                webRef[0] = null
+                                ready = false
+                                recoveryTick += 1
+                                return true
+                            }
+                        }
                         webRef[0] = this
                         loadUrl("file:///android_asset/editor/index.html")
                     }
                 },
+                update = { web -> web.invalidate() },
+                onRelease = { it.destroy() },
             )
+            }
         }
         SymbolBar(kind = kind, enabled = ready) { text ->
             send(EditorBridge.insert(id.incrementAndGet(), text))

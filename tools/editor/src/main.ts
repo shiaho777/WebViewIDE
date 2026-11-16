@@ -96,7 +96,7 @@ interface Palette {
 function themeFor(p: Palette) {
   const base = EditorView.theme(
     {
-      "&": { backgroundColor: p.bg, color: p.fg, fontSize: "14px", height: "100%" },
+      "&": { backgroundColor: p.bg, color: p.fg, fontSize: "14px" },
       ".cm-scroller": { fontFamily: "monospace", lineHeight: "1.45" },
       ".cm-content": { caretColor: p.cursor, paddingBottom: "48px" },
       ".cm-cursor, .cm-dropCursor": { borderLeftColor: p.cursor, borderLeftWidth: "2px" },
@@ -305,5 +305,20 @@ window.__wviReceive = (json: string) => {
     post("error", { message: String(e) });
   }
 };
+
+// Pixel-size the editor root: percentage heights on html/body break text
+// rendering on some Android WebViews, so we never touch html/body and size
+// the root from the live viewport instead.
+function fit(): void {
+  const el = view.dom;
+  el.style.position = "absolute";
+  el.style.top = "0";
+  el.style.left = "0";
+  el.style.width = window.innerWidth + "px";
+  el.style.height = window.innerHeight + "px";
+  view.requestMeasure();
+}
+window.addEventListener("resize", fit);
+fit();
 
 post("ready", {});
