@@ -27,19 +27,37 @@ object ApkInstaller {
         }
     }
 
-    fun share(context: Context, apk: File) {
+    fun share(context: Context, apk: File) = shareFile(context, apk)
+
+    /**
+     * Hands a build artifact or a project archive to another app. The MIME type
+     * follows the extension so receiving apps offer the right actions.
+     */
+    fun shareFile(context: Context, file: File) {
         val uri = FileProvider.getUriForFile(
             context,
             "${context.packageName}.fileprovider",
-            apk,
+            file,
         )
         val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "application/vnd.android.package-archive"
+            type = mimeTypeFor(file)
             putExtra(Intent.EXTRA_STREAM, uri)
+            putExtra(Intent.EXTRA_SUBJECT, file.name)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        context.startActivity(Intent.createChooser(intent, "分享安装包").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        context.startActivity(
+            Intent.createChooser(intent, shareTitleFor(file)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
     }
+
+    fun mimeTypeFor(file: File): String = when (file.extension.lowercase()) {
+        "apk" -> "application/vnd.android.package-archive"
+        "zip" -> "application/zip"
+        else -> "application/octet-stream"
+    }
+
+    fun shareTitleFor(file: File): String =
+        if (file.extension.equals("zip", ignoreCase = true)) "分享项目" else "分享安装包"
 
     fun install(context: Context, apk: File) {
         val uri = FileProvider.getUriForFile(
