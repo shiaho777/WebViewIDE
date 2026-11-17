@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AutoFixHigh
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.FindReplace
@@ -124,6 +125,9 @@ fun CmCodeEditor(
                 }
                 IconButton(onClick = { send(EditorBridge.simple(id.incrementAndGet(), "redo")) }) {
                     Icon(Icons.Outlined.Redo, contentDescription = "重做", modifier = Modifier.size(20.dp))
+                }
+                IconButton(onClick = { send(EditorBridge.simple(id.incrementAndGet(), "format")) }) {
+                    Icon(Icons.Outlined.AutoFixHigh, contentDescription = "格式化", modifier = Modifier.size(20.dp))
                 }
                 IconButton(onClick = {
                     finding = !finding

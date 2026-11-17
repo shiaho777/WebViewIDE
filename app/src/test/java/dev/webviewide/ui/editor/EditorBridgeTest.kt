@@ -38,6 +38,12 @@ class EditorBridgeTest {
         assertEquals("r", parseJson(EditorBridge.replace(1, "q", "r", true)).jsonObject().obj("payload").string("text"))
     }
 
+    @Test fun formatMessageIsWellFormed() {
+        val root = parseJson(EditorBridge.simple(9, "format")).jsonObject()
+        assertEquals("format", root.string("type"))
+        assertEquals(9, root.int("id", 0))
+    }
+
     @Test fun jsCallSafelyQuotesTheMessage() {
         val message = EditorBridge.insert(3, "'); alert('x")
         val call = EditorBridge.jsCall(message)

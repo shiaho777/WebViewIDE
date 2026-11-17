@@ -23,7 +23,7 @@ import {
   type ViewUpdate,
 } from "@codemirror/view";
 import { RangeSetBuilder } from "@codemirror/state";
-import { defaultKeymap, history, historyKeymap, undo, redo, indentWithTab } from "@codemirror/commands";
+import { defaultKeymap, history, historyKeymap, undo, redo, indentWithTab, indentSelection } from "@codemirror/commands";
 import {
   autocompletion,
   completionKeymap,
@@ -330,6 +330,18 @@ function handle(msg: Msg): void {
       const changed = replaceAll(view);
       flushChange();
       post("findResult", { done: true, changed }, msg.id);
+      break;
+    }
+    case "format": {
+      // Whole-document reindent using the active language's indent service.
+      // Not a full pretty-printer (prettier would bloat the bundle).
+      const sel = view.state.selection.main;
+      view.dispatch({ selection: { anchor: 0, head: view.state.doc.length } });
+      indentSelection(view);
+      const len = view.state.doc.length;
+      view.dispatch({ selection: { anchor: Math.min(sel.anchor, len), head: Math.min(sel.head, len) } });
+      flushChange();
+      post("findResult", { done: true, changed: true }, msg.id);
       break;
     }
     case "insert": {
