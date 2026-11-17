@@ -1,11 +1,11 @@
 :root {
-  --bg: #0f1216;
-  --card: #171c23;
-  --line: #242c36;
-  --text: #e9edf2;
-  --muted: #97a3b0;
-  --brand: #5eead4;
-  --brand2: #60a5fa;
+  --bg: #fbfcfd;
+  --card: #ffffff;
+  --line: #e3e8ee;
+  --text: #3a4149;
+  --muted: #6b7480;
+  --brand: #7fa398;
+  --brand2: #9db8b0;
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -26,7 +26,7 @@ body {
   border: 0; background: transparent; color: var(--muted);
   padding: 9px 0; border-radius: 999px; font-size: 15px; font-weight: 600;
 }
-.tab.active { background: linear-gradient(135deg, var(--brand), var(--brand2)); color: #0b1116; }
+.tab.active { background: #e2ece9; color: #3d5a52; }
 
 .panel { display: none; }
 .panel.active { display: block; animation: fade .25s ease; }
@@ -35,14 +35,14 @@ body {
 .ring-wrap { position: relative; width: 220px; margin: 8px auto 14px; }
 .ring { width: 100%; transform: rotate(-90deg); }
 .ring circle { fill: none; stroke-width: 9; stroke-linecap: round; }
-.track { stroke: #202832; }
+.track { stroke: #e8edf1; }
 .bar {
-  stroke: url(#g); stroke: var(--brand);
+  stroke: var(--brand);
   stroke-dasharray: 326.7; stroke-dashoffset: 0;
   transition: stroke-dashoffset .3s linear;
 }
 .ring-text { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
-.ring-text b { font-size: 38px; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
+.ring-text b { font-size: 38px; letter-spacing: -1px; font-variant-numeric: tabular-nums; font-weight: 600; }
 .ring-text span { font-size: 12px; color: var(--muted); }
 
 .presets { display: flex; gap: 8px; justify-content: center; margin-bottom: 14px; }
@@ -57,7 +57,7 @@ body {
   border: 0; border-radius: 999px; padding: 12px 26px;
   font-size: 15px; font-weight: 700;
 }
-.btn.primary { background: linear-gradient(135deg, var(--brand), var(--brand2)); color: #0b1116; }
+.btn.primary { background: #e2ece9; color: #3d5a52; }
 .btn.ghost { background: var(--card); border: 1px solid var(--line); color: var(--text); }
 .btn:active { transform: scale(.97); }
 
@@ -69,7 +69,7 @@ body {
   padding: 16px; text-align: center; margin-bottom: 14px;
 }
 .sum span { display: block; font-size: 12px; color: var(--muted); }
-.sum b { font-size: 28px; color: var(--brand); }
+.sum b { font-size: 28px; color: var(--brand); font-weight: 600; }
 
 .entry { display: grid; grid-template-columns: 1fr 96px; gap: 8px; margin-bottom: 14px; }
 .entry input {

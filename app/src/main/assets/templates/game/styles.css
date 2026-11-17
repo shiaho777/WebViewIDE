@@ -1,12 +1,12 @@
 :root {
-  --bg: #0b0f14;
-  --panel: #141a22;
-  --line: #222b36;
-  --text: #e9eef5;
-  --muted: #93a1b1;
-  --hot: #ffd166;
-  --good: #4ade80;
-  --bad: #f87171;
+  --bg: #fbfcfd;
+  --panel: #ffffff;
+  --line: #e3e8ee;
+  --text: #3a4149;
+  --muted: #6b7480;
+  --hot: #c9b294;
+  --good: #7ba386;
+  --bad: #b98a8a;
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -25,14 +25,14 @@ body {
   border-radius: 14px; padding: 8px; text-align: center;
 }
 .chip span { display: block; font-size: 11px; color: var(--muted); }
-.chip b { font-size: 22px; }
+.chip b { font-size: 22px; font-weight: 600; }
 #time.low { color: var(--bad); }
 
 /* 棋盘：固定宽高比，方块用百分比定位，适配任意屏幕。 */
 .board {
   position: relative; width: 100%; aspect-ratio: 3 / 4;
   background:
-    radial-gradient(70% 60% at 50% 0%, rgba(255, 209, 102, .10), transparent 70%),
+    radial-gradient(70% 60% at 50% 0%, rgba(201, 178, 148, .10), transparent 70%),
     var(--panel);
   border: 1px solid var(--line); border-radius: 20px; overflow: hidden;
   touch-action: manipulation;
@@ -40,10 +40,10 @@ body {
 
 .dot {
   position: absolute; width: 64px; height: 64px; border-radius: 18px;
-  background: linear-gradient(135deg, var(--hot), #ff9f68);
-  box-shadow: 0 8px 24px rgba(255, 159, 104, .35);
+  background: linear-gradient(135deg, #d8c4a8, #c9b294);
+  box-shadow: 0 6px 18px rgba(160, 140, 110, .18);
   animation: pop .18s ease-out;
-  display: grid; place-items: center; font-size: 22px;
+  display: grid; place-items: center; font-size: 22px; color: #6b5b45;
 }
 .dot:active { transform: scale(.9); }
 @keyframes pop { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
@@ -60,21 +60,20 @@ body {
 .overlay {
   position: absolute; inset: 0; display: grid; place-content: center;
   text-align: center; gap: 10px; padding: 24px;
-  background: rgba(11, 15, 20, .86); backdrop-filter: blur(2px);
+  background: rgba(251, 252, 253, .92); backdrop-filter: blur(2px);
 }
-.overlay h1 { margin: 0; font-size: 26px; }
+.overlay h1 { margin: 0; font-size: 26px; font-weight: 600; }
 .overlay p { margin: 0; color: var(--muted); font-size: 14px; }
 .overlay.hide { display: none; }
 
 .btn {
   margin-top: 8px; padding: 12px 26px; border: 0; border-radius: 999px;
-  background: linear-gradient(135deg, var(--hot), #ff9f68);
-  color: #22160a; font-size: 16px; font-weight: 700;
+  background: #e4ebf2; color: #33475b; font-size: 16px; font-weight: 700;
 }
 .btn:active { transform: scale(.96); }
 
 .foot { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
-#combo { color: var(--hot); font-weight: 600; }
+#combo { color: #a08a68; font-weight: 600; }
 .mini {
   background: transparent; border: 1px solid var(--line); color: var(--muted);
   border-radius: 999px; padding: 7px 14px; font-size: 12px;

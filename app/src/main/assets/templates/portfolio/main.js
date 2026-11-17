@@ -1,9 +1,9 @@
 // 1) 作品数据：改这个数组就能换成你自己的作品。
 const works = [
-  { title: "夜航日记", desc: "一个记录深夜灵感的极简笔记页。", tags: ["HTML", "CSS"], c1: "#6ea8fe", c2: "#b18cff" },
-  { title: "番茄小钟", desc: "25 分钟专注计时，带结束提示音。", tags: ["JavaScript"], c1: "#ffb86b", c2: "#ff6b9d" },
-  { title: "像素花园", desc: "点一下种一朵花，纯 CSS 动画。", tags: ["CSS 动画"], c1: "#7ddc8a", c2: "#6ea8fe" },
-  { title: "地铁速查", desc: "常用线路与首末班时间离线查询。", tags: ["localStorage"], c1: "#b18cff", c2: "#7ddc8a" },
+  { title: "夜航日记", desc: "一个记录深夜灵感的极简笔记页。", tags: ["HTML", "CSS"], c1: "#aebfd0", c2: "#c3cdd8" },
+  { title: "番茄小钟", desc: "25 分钟专注计时，带结束提示音。", tags: ["JavaScript"], c1: "#d0c0ac", c2: "#ddcfc0" },
+  { title: "像素花园", desc: "点一下种一朵花，纯 CSS 动画。", tags: ["CSS 动画"], c1: "#b3c4b6", c2: "#c6d2c8" },
+  { title: "地铁速查", desc: "常用线路与首末班时间离线查询。", tags: ["localStorage"], c1: "#bcc3cf", c2: "#cfd5de" },
 ];
 
 // 2) 渲染卡片：用模板字符串拼 HTML，再一次性插入。

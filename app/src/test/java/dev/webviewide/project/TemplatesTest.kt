@@ -66,6 +66,23 @@ class TemplatesTest {
         assertTrue(tool.contains("escapeHtml(i.note)"))
     }
 
+    @Test fun templatesUseTheCalmLightPalette() {
+        // The first preview must look like the app: bright surfaces, no dark
+        // theme and no saturated blue/purple gradients.
+        Templates.all.forEach { t ->
+            val css = File(root, "${t.id}/styles.css").readText()
+            val bg = Regex("""--bg:\s*(#[0-9a-fA-F]{6})""").find(css)?.groupValues?.get(1)
+                ?: error("${t.id} must declare --bg")
+            val v = bg.removePrefix("#").toLong(16)
+            val r = ((v shr 16) and 0xFF).toInt(); val g = ((v shr 8) and 0xFF).toInt(); val b = (v and 0xFF).toInt()
+            val lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
+            assertTrue("${t.id} background should be bright ($bg)", lum >= 0.9)
+            // No vivid violet/blue accent leftovers.
+            assertFalse("${t.id} still uses vivid purple", css.contains("#b18cff", ignoreCase = true))
+            assertFalse("${t.id} still uses vivid blue", css.contains("#6ea8fe", ignoreCase = true))
+        }
+    }
+
     @Test fun frameworkTemplatesStayBuildFree() {
         // Vue/React must use the bundled local builds and a real app, not a counter.
         listOf("vue" to "vue.global.prod.js", "react" to "react.production.min.js").forEach { (id, lib) ->
