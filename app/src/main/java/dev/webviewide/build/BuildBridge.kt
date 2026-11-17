@@ -46,7 +46,7 @@ sealed interface BuildEvent {
     data object Ready : BuildEvent
     data class Log(val level: String, val text: String) : BuildEvent
     data class Progress(val fraction: Float, val label: String) : BuildEvent
-    data class Net(val url: String, val method: String) : BuildEvent
+    data class Net(val url: String, val method: String, val integrity: String) : BuildEvent
     data class FsWrite(val path: String, val text: String?, val b64: String?) : BuildEvent
     data class FsRead(val path: String) : BuildEvent
     data class Done(val ok: Boolean, val summary: String) : BuildEvent
@@ -66,7 +66,7 @@ object BuildEvents {
                 fraction = (p["fraction"] as? Number)?.toFloat() ?: 0f,
                 label = p.string("label"),
             )
-            "net" -> BuildEvent.Net(p.string("url"), p.string("method", "GET"))
+            "net" -> BuildEvent.Net(p.string("url"), p.string("method", "GET"), p.string("integrity"))
             "fsWrite" -> BuildEvent.FsWrite(
                 path = p.string("path"),
                 text = p["text"] as? String,

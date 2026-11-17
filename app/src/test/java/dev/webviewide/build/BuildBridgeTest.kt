@@ -34,8 +34,8 @@ class BuildBridgeTest {
         assertEquals(BuildEvent.Log("warn", "hi"), log?.second)
         val prog = BuildEvents.parse("""{"id":2,"type":"progress","payload":{"fraction":0.5,"label":"install"}}""")?.second
         assertEquals(BuildEvent.Progress(0.5f, "install"), prog)
-        val net = BuildEvents.parse("""{"id":3,"type":"net","payload":{"url":"https://r/x","method":"GET"}}""")?.second
-        assertEquals(BuildEvent.Net("https://r/x", "GET"), net)
+        val net = BuildEvents.parse("""{"id":3,"type":"net","payload":{"url":"https://r/x","method":"GET","integrity":"sha512-abc"}}""")?.second
+        assertEquals(BuildEvent.Net("https://r/x", "GET", "sha512-abc"), net)
         val fw = BuildEvents.parse("""{"id":4,"type":"fsWrite","payload":{"path":"a.js","text":"x"}}""")?.second
         assertEquals(BuildEvent.FsWrite("a.js", "x", null), fw)
         val fr = BuildEvents.parse("""{"id":5,"type":"fsRead","payload":{"path":"a.js"}}""")?.second
