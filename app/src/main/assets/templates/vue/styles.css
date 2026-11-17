@@ -1,10 +1,10 @@
 :root {
-  --bg: #0f1216;
-  --card: #171c23;
-  --line: #242c36;
-  --text: #e9edf2;
-  --muted: #97a3b0;
-  --brand: #42b883;
+  --bg: #fbfcfd;
+  --card: #ffffff;
+  --line: #e3e8ee;
+  --text: #3a4149;
+  --muted: #6b7480;
+  --brand: #6f9484;
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -16,7 +16,7 @@ body {
 
 main { max-width: 520px; margin: 0 auto; padding: 24px 16px 32px; }
 .mark { color: var(--brand); font-size: 12px; margin: 0 0 6px; letter-spacing: .3px; }
-h1 { margin: 0 0 18px; font-size: 26px; letter-spacing: -.5px; }
+h1 { margin: 0 0 18px; font-size: 26px; letter-spacing: -.5px; font-weight: 600; }
 
 .entry { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-bottom: 14px; }
 .entry input {
@@ -26,7 +26,7 @@ h1 { margin: 0 0 18px; font-size: 26px; letter-spacing: -.5px; }
 .entry input:focus { outline: none; border-color: var(--brand); }
 .entry button {
   border: 0; border-radius: 12px; padding: 0 20px;
-  background: var(--brand); color: #08130d; font-weight: 700; font-size: 15px;
+  background: #e2ece7; color: #3c5a4d; font-weight: 700; font-size: 15px;
 }
 .entry button:active { transform: scale(.97); }
 

@@ -1,10 +1,10 @@
-:root { color-scheme: light dark; font-family: system-ui, sans-serif; }
-body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f4f7fb; color: #1a1c1e; }
+:root { --bg: #fbfcfd; color-scheme: light dark; font-family: system-ui, sans-serif; }
+body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: var(--bg); color: #3a4149; }
 main { width: min(calc(100% - 32px), 420px); }
-.mark { margin: 0; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #185fa5; }
-h1 { font-size: 32px; line-height: 1.2; margin: 8px 0; }
-a { color: #185fa5; }
+.mark { margin: 0; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #61809b; }
+h1 { font-size: 32px; line-height: 1.2; margin: 8px 0; font-weight: 600; }
+a { color: #61809b; }
 @media (prefers-color-scheme: dark) {
-  body { background: #1a1c1e; color: #e3e2e6; }
-  .mark, a { color: #a2c9ff; }
+  body { background: #1c1f23; color: #d6dae0; }
+  .mark, a { color: #afc4d6; }
 }
