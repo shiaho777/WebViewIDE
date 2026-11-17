@@ -30,7 +30,7 @@ jobs:
       - uses: android-actions/setup-android@v3
         with:
           packages: platform-tools
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
       - name: Verify committed editor bundle matches sources
         run: node tools/editor/verify.mjs
       - name: Editor policy tests (Node built-in runner, no deps)
