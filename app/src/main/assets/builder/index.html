@@ -6,36 +6,6 @@
 <title>WebViewIDE Build Runtime</title>
 </head>
 <body>
-<script>
-// Build-runtime skeleton. The npm/esbuild pipeline bundle is injected in later
-// stages; for now it acks commands and reports readiness so the bridge and
-// lifecycle can be verified end to end.
-(function () {
-  "use strict";
-  function post(type, payload, id) {
-    if (window.WviBuild) window.WviBuild.post(JSON.stringify({ id: id || 0, type: type, payload: payload || {} }));
-  }
-  window.__wviBuildReceive = function (json) {
-    var msg;
-    try { msg = JSON.parse(json); } catch (e) { post("error", { message: "bad command: " + e }); return; }
-    var id = msg.id || 0;
-    switch (msg.type) {
-      case "install":
-      case "build":
-        post("log", { level: "info", text: msg.type + " received (pipeline not yet wired)" }, id);
-        post("done", { ok: false, summary: "pipeline pending" }, id);
-        break;
-      case "cancel":
-        post("done", { ok: false, summary: "cancelled" }, id);
-        break;
-      default:
-        // netResponse / fsReadResponse / fsWriteResponse are handled by the
-        // pipeline bundle once wired; ignore here.
-        break;
-    }
-  };
-  post("ready", {});
-})();
-</script>
+<script src="builder.bundle.js"></script>
 </body>
 </html>
