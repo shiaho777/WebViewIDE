@@ -26,6 +26,7 @@ import dev.webviewide.project.DocumentImport
 import dev.webviewide.project.DraftJournal
 import dev.webviewide.project.DraftSaver
 import dev.webviewide.project.ExternalChangeException
+import dev.webviewide.project.FileHistory
 import dev.webviewide.project.ProjectIds
 import dev.webviewide.project.ProjectStore
 import dev.webviewide.project.ProjectZip
@@ -61,6 +62,8 @@ class IdeSession(
     var treeTick by mutableIntStateOf(0)
     var expanded by mutableStateOf(setOf<String>())
     var pendingGotoLine by mutableIntStateOf(0)
+    /** Bumped on rollback so the editor WebView remounts with the restored text. */
+    var docEpoch by mutableIntStateOf(0)
     var artifacts by mutableStateOf(listOf<BuildArtifact>())
     var signingKeys by mutableStateOf(listOf<KeystoreManager.StoredKey>())
     var projectExportRequested by mutableStateOf(false)
@@ -316,6 +319,10 @@ class IdeSession(
             val outcome = withContext(Dispatchers.IO) {
                 runCatching {
                     val served = saver.save(file, snapshot, saving) && SiteFiles.isInside(open.serveDir, file)
+                    if (served) {
+                        val rel = runCatching { ProjectStore.relative(open, file) }.getOrDefault(file.name)
+                        FileHistory.record(app.filesDir, open.id, rel, snapshot)
+                    }
                     if (served && open.liveReload) {
                         val rel = runCatching { file.toRelativeString(open.serveDir).replace(File.separatorChar, '/') }
                             .getOrDefault("")
@@ -334,6 +341,28 @@ class IdeSession(
                 },
             )
         }
+    }
+
+    /** Version snapshots for the active file, newest first. */
+    fun historyEntries(): List<FileHistory.Entry> {
+        val open = project ?: return emptyList()
+        val file = current ?: return emptyList()
+        val rel = runCatching { ProjectStore.relative(open, file) }.getOrDefault(file.name)
+        return FileHistory.list(app.filesDir, open.id, rel)
+    }
+
+    /** Restores a snapshot into the editor and saves it (triggers hot reload). */
+    fun rollback(ts: Long) {
+        val open = project ?: return
+        val file = current ?: return
+        val rel = runCatching { ProjectStore.relative(open, file) }.getOrDefault(file.name)
+        val text = FileHistory.read(app.filesDir, open.id, rel, ts) ?: run {
+            status = "这个版本读不到了"
+            return
+        }
+        edit(text)
+        docEpoch += 1
+        status = "已回滚到历史版本"
     }
 
     fun runPreview() {

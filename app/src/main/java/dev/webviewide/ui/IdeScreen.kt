@@ -38,6 +38,7 @@ import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.FolderOpen
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.OpenInBrowser
@@ -104,7 +105,7 @@ import dev.webviewide.ui.theme.AppMotion
 import java.io.File
 import kotlinx.coroutines.launch
 
-private enum class Panel { PROJECTS, SETTINGS, PACKAGE, ABOUT }
+private enum class Panel { PROJECTS, SETTINGS, PACKAGE, ABOUT, HISTORY }
 
 @Composable
 fun rememberIdeSession(): IdeSession {
@@ -289,6 +290,14 @@ fun IdeScreen() {
                                         session.redetect()
                                     },
                                 )
+                                DropdownMenuItem(
+                                    text = { Text("历史版本") },
+                                    leadingIcon = { Icon(Icons.Outlined.History, contentDescription = null) },
+                                    onClick = {
+                                        menu = false
+                                        panel = Panel.HISTORY
+                                    },
+                                )
                                 }
                                 HorizontalDivider(Modifier.padding(vertical = 4.dp))
                                 DropdownMenuItem(
@@ -391,7 +400,7 @@ fun IdeScreen() {
                                             )
                                             else -> CmCodeEditor(
                                                 path = runCatching { ProjectStore.relative(open, file) }
-                                                    .getOrDefault(file.name),
+                                                    .getOrDefault(file.name) + "#" + session.docEpoch,
                                                 initial = session.draft,
                                                 kind = sourceKindFor(file.name),
                                                 onText = { session.edit(it) },
@@ -453,6 +462,15 @@ fun IdeScreen() {
             )
         }
         Panel.ABOUT -> AboutSheet(onDismiss = { panel = null })
+        Panel.HISTORY -> HistorySheet(
+            fileName = session.current?.name ?: "",
+            entries = session.historyEntries(),
+            onRollback = { ts ->
+                session.rollback(ts)
+                panel = null
+            },
+            onDismiss = { panel = null },
+        )
         Panel.PACKAGE -> project?.let { open ->
             androidx.compose.runtime.LaunchedEffect(open.id) { session.refreshBuildState() }
             PackageSheet(
