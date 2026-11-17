@@ -23,6 +23,6 @@
 
     <!-- slash: mint accent, reads as the "run/ship" stroke -->
     <path
-        android:fillColor="#9FE1CB"
+        android:fillColor="#C6D4E0"
         android:pathData="M57.5,33 L62.5,34.4 L50.5,75 L45.5,73.6 Z" />
 </vector>

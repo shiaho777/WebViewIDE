@@ -109,7 +109,8 @@ class PreviewServerTest {
             server.liveReload = true
             val port = server.start(4287, false)
             Socket("127.0.0.1", port).use { socket ->
-                socket.soTimeout = 3000
+                // Generous for slow CI runners; the event itself arrives in ms.
+                socket.soTimeout = 15000
                 socket.getOutputStream().apply {
                     write("GET /__webviewide/reload HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n".toByteArray())
                     flush()

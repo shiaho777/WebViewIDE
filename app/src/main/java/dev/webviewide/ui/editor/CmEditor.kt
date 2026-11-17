@@ -342,19 +342,51 @@ private fun String.toColorInt(): Int = android.graphics.Color.parseColor(this)
 
 private fun Color.hex(): String = "#%06X".format(0xFFFFFF and toArgb())
 
-private fun androidx.compose.material3.ColorScheme.editorPalette(): Map<String, String> = mapOf(
-    "bg" to surface.hex(),
-    "fg" to onSurface.hex(),
-    "gutter" to surfaceContainerLow.hex(),
-    "gutterFg" to onSurfaceVariant.hex(),
-    "activeLine" to surfaceContainerHigh.hex(),
-    "selection" to blend(primary, surface, 0.25f).hex(),
-    "cursor" to primary.hex(),
-    "keyword" to primary.hex(),
-    "string" to tertiary.hex(),
-    "number" to secondary.hex(),
-    "comment" to onSurfaceVariant.hex(),
-    "tag" to primary.hex(),
-    "attr" to secondary.hex(),
-)
+/**
+ * Syntax colors stay inside one calm family: the accent is nudged in hue and
+ * lightness rather than swapping in saturated teal/purple. Distinct enough to
+ * read code, quiet enough to keep the page airy.
+ */
+private fun androidx.compose.material3.ColorScheme.editorPalette(): Map<String, String> {
+    val keyword = primary
+    // Rotate toward green / warm sand, never toward purple: a positive turn
+    // from the blue accent lands in violet, which is exactly the loud hue we
+    // are removing.
+    val string = hueShift(keyword, -0.20f)
+    val number = hueShift(keyword, -0.45f)
+    val attr = calmVariant(keyword)
+    return mapOf(
+        "bg" to surface.hex(),
+        "fg" to onSurface.hex(),
+        "gutter" to surfaceContainerLow.hex(),
+        "gutterFg" to onSurfaceVariant.hex(),
+        "activeLine" to surfaceContainerHigh.hex(),
+        "selection" to blend(primary, surface, 0.22f).hex(),
+        "cursor" to keyword.hex(),
+        "keyword" to keyword.hex(),
+        "string" to string.hex(),
+        "number" to number.hex(),
+        "comment" to onSurfaceVariant.hex(),
+        "tag" to keyword.hex(),
+        "attr" to attr.hex(),
+    )
+}
+
+/** Same hue, lower saturation and a lightness nudge: a quiet sibling tone. */
+private fun calmVariant(color: Color): Color {
+    val hsv = FloatArray(3)
+    android.graphics.Color.colorToHSV(color.toArgb(), hsv)
+    hsv[1] = (hsv[1] * 0.5f).coerceIn(0f, 0.22f)
+    hsv[2] = if (hsv[2] > 0.5f) (hsv[2] * 0.82f).coerceAtMost(0.72f) else (hsv[2] * 1.25f).coerceAtMost(0.85f)
+    return Color(android.graphics.Color.HSVToColor(hsv))
+}
+
+/** Rotates hue by [turns] while damping saturation, so shifts stay gentle. */
+private fun hueShift(color: Color, turns: Float): Color {
+    val hsv = FloatArray(3)
+    android.graphics.Color.colorToHSV(color.toArgb(), hsv)
+    hsv[0] = (hsv[0] + turns * 360f + 360f) % 360f
+    hsv[1] = (hsv[1] * 0.8f).coerceIn(0f, 0.45f)
+    return Color(android.graphics.Color.HSVToColor(hsv))
+}
 
