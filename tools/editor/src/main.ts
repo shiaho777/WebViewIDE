@@ -346,7 +346,15 @@ function handle(msg: Msg): void {
     }
     case "insert": {
       const text = String(p.text ?? "");
-      view.dispatch(view.state.replaceSelection(text));
+      // Route through the same input handlers as real typing so autoCloseTags /
+      // closeBrackets run for symbol-bar taps (e.g. ">" closes the open tag).
+      const { from, to } = view.state.selection.main;
+      const handlers = view.state.facet(EditorView.inputHandler);
+      let handled = false;
+      for (const h of handlers) {
+        if (h(view, from, to, text, () => view.state.update(view.state.replaceSelection(text)))) { handled = true; break; }
+      }
+      if (!handled) view.dispatch(view.state.replaceSelection(text), { userEvent: "input.type" });
       view.focus();
       flushChange();
       break;
