@@ -49,6 +49,11 @@ test("format action reindents the whole document", () => {
   assert.ok(/indentSelection\(view\)/.test(source), "format must reindent");
 });
 
+test("symbol-bar inserts route through input handlers so auto-close runs", () => {
+  assert.ok(source.includes("view.state.facet(EditorView.inputHandler)"), "insert must run input handlers");
+  assert.ok(/userEvent: "input\.type"/.test(source), "fallback insert must be tagged as typing");
+});
+
 test("match highlighting is provided without the built-in panel", () => {
   assert.ok(source.includes("getSearchQuery"), "must read the active query");
   assert.ok(source.includes("cm-searchMatch"), "must decorate matches");
