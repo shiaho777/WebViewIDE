@@ -17,7 +17,12 @@ import {
   drawSelection,
   highlightSpecialChars,
   rectangularSelection,
+  Decoration,
+  ViewPlugin,
+  type DecorationSet,
+  type ViewUpdate,
 } from "@codemirror/view";
+import { RangeSetBuilder } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap, undo, redo, indentWithTab } from "@codemirror/commands";
 import {
   autocompletion,
@@ -26,7 +31,7 @@ import {
   closeBracketsKeymap,
   acceptCompletion,
 } from "@codemirror/autocomplete";
-import { searchKeymap, SearchQuery, setSearchQuery, findNext, findPrevious, replaceNext, replaceAll } from "@codemirror/search";
+import { search, getSearchQuery, searchKeymap, SearchQuery, setSearchQuery, findNext, findPrevious, replaceNext, replaceAll } from "@codemirror/search";
 import {
   bracketMatching,
   foldGutter,
@@ -159,6 +164,40 @@ const defaultPalette: Palette = {
 let changeTimer: number | undefined;
 let lastPosted = "";
 
+// The built-in search panel is suppressed (the UI lives in Compose), so the
+// stock match highlighting never mounts. Decorate every match of the active
+// query ourselves; the current match is already shown by the selection.
+const searchMatchMark = Decoration.mark({ class: "cm-searchMatch" });
+function buildSearchDecos(v: EditorView): DecorationSet {
+  const q = getSearchQuery(v.state);
+  if (!q.valid || !q.search) return Decoration.none;
+  const builder = new RangeSetBuilder<Decoration>();
+  const cur = q.getCursor(v.state);
+  let n = 0;
+  let r = cur.next();
+  while (!r.done && n < 2000) {
+    const { from, to } = r.value;
+    if (to > from) builder.add(from, to, searchMatchMark);
+    n++;
+    r = cur.next();
+  }
+  return builder.finish();
+}
+const searchHighlight = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet;
+    constructor(v: EditorView) {
+      this.decorations = buildSearchDecos(v);
+    }
+    update(u: ViewUpdate) {
+      if (u.docChanged || u.transactions.some((tr) => tr.effects.some((e) => e.is(setSearchQuery)))) {
+        this.decorations = buildSearchDecos(u.view);
+      }
+    }
+  },
+  { decorations: (v) => v.decorations },
+);
+
 const view = new EditorView({
   parent: document.body,
   state: EditorState.create({
@@ -176,6 +215,10 @@ const view = new EditorView({
       closeBrackets(),
       autocompletion(),
       highlightActiveLine(),
+      // Mount the search state field so find/replace work on first use; the
+      // no-op panel keeps CM's English UI out (Compose owns the toolbar).
+      search({ createPanel: () => ({ dom: document.createElement("span") }) }),
+      searchHighlight,
       indentUnit.of("  "),
       EditorState.tabSize.of(2),
       wrapConf.of(window.innerWidth >= WRAP_MIN_WIDTH ? EditorView.lineWrapping : []),

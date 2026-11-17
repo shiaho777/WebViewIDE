@@ -35,3 +35,17 @@ test("policy is wired to init, resize and reconfigure", () => {
   assert.ok(reconfiguresOnResize, "resize must reconfigure wrapping");
   assert.ok(fitListensToResize, "fit must run on resize");
 });
+
+// Find/replace regression: without the search() extension the first command
+// silently fell back to opening CM's panel and reported false success.
+test("search state field is mounted so find/replace work on first use", () => {
+  assert.ok(/import \{[^}]*\bsearch\b[^}]*\} from "@codemirror\/search"/.test(source), "must import search");
+  assert.ok(/search\(\{ createPanel:/.test(source), "must mount search() with a suppressed panel");
+});
+
+test("match highlighting is provided without the built-in panel", () => {
+  assert.ok(source.includes("getSearchQuery"), "must read the active query");
+  assert.ok(source.includes("cm-searchMatch"), "must decorate matches");
+  assert.ok(/ViewPlugin\.fromClass/.test(source), "highlight must be a view plugin");
+  assert.ok(source.includes("searchHighlight,"), "plugin must be in extensions");
+});
