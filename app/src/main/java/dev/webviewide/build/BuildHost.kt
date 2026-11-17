@@ -17,6 +17,7 @@ import dev.webviewide.ui.IdeSession
 @Composable
 fun BuildHost(
     session: IdeSession,
+    buildCtl: BuildController,
     onHandle: (BuildHandle?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -24,9 +25,6 @@ fun BuildHost(
     var handle by remember { mutableStateOf<BuildHandle?>(null) }
     val netCtl = remember {
         BuildNetController(context.filesDir) { m -> handle?.send(m) }
-    }
-    val buildCtl = remember {
-        BuildController(context.filesDir, { session.project?.srcDir }) { m -> handle?.send(m) }
     }
     BuildRuntime(
         onEvent = { id, ev ->

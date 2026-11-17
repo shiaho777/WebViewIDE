@@ -35,6 +35,13 @@ jobs:
         run: node tools/editor/verify.mjs
       - name: Editor policy tests (Node built-in runner, no deps)
         run: node --test tools/editor/test/*.test.mjs
+      - name: Verify committed builder bundle matches sources
+        run: node tools/builder/verify.mjs
+      - name: Builder npm/esbuild tests (needs fflate)
+        run: |
+          cd tools/builder
+          npm ci --no-audit --no-fund
+          node --test test/*.test.mjs
       - name: Unit tests, runtime template, and debug APKs
         run: ./gradlew :app:testDebugUnitTest :runtime:testDebugUnitTest :runtime:syncRuntimeTemplate :app:assembleDebug :runtime:assembleDebug :app:assembleDebugAndroidTest --stacktrace
       - name: Spot-check template signature
