@@ -43,6 +43,12 @@ test("search state field is mounted so find/replace work on first use", () => {
   assert.ok(/search\(\{ createPanel:/.test(source), "must mount search() with a suppressed panel");
 });
 
+test("format action reindents the whole document", () => {
+  assert.ok(/import \{[^}]*indentSelection[^}]*\} from "@codemirror\/commands"/.test(source), "must import indentSelection");
+  assert.ok(/case "format":/.test(source), "must handle format");
+  assert.ok(/indentSelection\(view\)/.test(source), "format must reindent");
+});
+
 test("match highlighting is provided without the built-in panel", () => {
   assert.ok(source.includes("getSearchQuery"), "must read the active query");
   assert.ok(source.includes("cm-searchMatch"), "must decorate matches");
