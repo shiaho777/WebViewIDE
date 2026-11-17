@@ -70,6 +70,13 @@ object Templates {
             accent = 0xFF8AA1B5,
             accent2 = 0xFFA8B9C7,
         ),
+        Template(
+            id = "npm-react",
+            name = "React 工程",
+            description = "真实 npm 依赖 + JSX，经 esbuild 打包到 dist",
+            accent = 0xFF7D94A8,
+            accent2 = 0xFFA8B9C7,
+        ),
     )
 
     val showcase: List<Template> = all.filter { it.showcase }

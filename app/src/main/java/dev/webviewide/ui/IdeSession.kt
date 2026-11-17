@@ -65,6 +65,10 @@ class IdeSession(
     /** Bumped on rollback so the editor WebView remounts with the restored text. */
     var docEpoch by mutableIntStateOf(0)
     var artifacts by mutableStateOf(listOf<BuildArtifact>())
+    var buildFraction by mutableStateOf(0f)
+    var buildLabel by mutableStateOf("")
+    var buildLog by mutableStateOf(listOf<String>())
+    var buildRunning by mutableStateOf(false)
     var signingKeys by mutableStateOf(listOf<KeystoreManager.StoredKey>())
     var projectExportRequested by mutableStateOf(false)
 
@@ -305,6 +309,31 @@ class IdeSession(
         version += 1
         current?.let { journal.record(it, text, version) }
         scheduleSave()
+    }
+
+    fun appendBuildLog(line: String) {
+        buildLog = (buildLog + line).takeLast(200)
+    }
+
+    fun setBuildProgress(fraction: Float, label: String) {
+        buildFraction = fraction
+        buildLabel = label
+    }
+
+    /** After a successful build, re-detect so preview/pack switch to dist. */
+    fun onBuildFinished(ok: Boolean, summary: String) {
+        buildRunning = false
+        appendBuildLog(summary)
+        if (!ok) {
+            status = summary
+            return
+        }
+        val open = project ?: return
+        scope.launch {
+            val next = withContext(Dispatchers.IO) { ProjectStore.redetect(open) }
+            update(next, restart = true)
+            status = "构建完成，预览已切换到产物"
+        }
     }
 
     private fun scheduleSave() {

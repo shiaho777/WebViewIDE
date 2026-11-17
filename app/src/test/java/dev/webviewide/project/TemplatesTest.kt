@@ -95,6 +95,16 @@ class TemplatesTest {
         assertTrue(File(root, "react/htm.umd.js").isFile)
     }
 
+    @Test fun npmReactTemplateIsABuildableProject() {
+        val dir = File(root, "npm-react")
+        val pkg = File(dir, "package.json").readText()
+        assertTrue(pkg.contains("\"react\""))
+        assertTrue(pkg.contains("\"react-dom\""))
+        assertTrue(File(dir, "src/main.jsx").isFile)
+        assertTrue(File(dir, "src/main.jsx").readText().contains("createRoot"))
+        assertTrue(Templates.isKnown("npm-react"))
+    }
+
     @Test fun lookupHelpersBehave() {
         assertTrue(Templates.isKnown("portfolio"))
         assertFalse(Templates.isKnown("does-not-exist"))
