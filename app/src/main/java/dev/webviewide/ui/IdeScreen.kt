@@ -33,6 +33,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.AutoFixHigh
+import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Description
@@ -105,7 +106,7 @@ import dev.webviewide.ui.theme.AppMotion
 import java.io.File
 import kotlinx.coroutines.launch
 
-private enum class Panel { PROJECTS, SETTINGS, PACKAGE, ABOUT, HISTORY }
+private enum class Panel { PROJECTS, SETTINGS, PACKAGE, ABOUT, HISTORY, BUILD }
 
 @Composable
 fun rememberIdeSession(): IdeSession {
@@ -131,6 +132,7 @@ fun IdeScreen() {
     var panel by remember { mutableStateOf<Panel?>(null) }
     var menu by remember { mutableStateOf(false) }
     var naming by remember { mutableStateOf<NameAsk?>(null) }
+    var buildHandle by remember { mutableStateOf<dev.webviewide.build.BuildHandle?>(null) }
     val project = session.project
     val currentPath = session.current?.let { file ->
         project?.let { open -> runCatching { ProjectStore.relative(open, file) }.getOrDefault(file.name) }
@@ -298,6 +300,15 @@ fun IdeScreen() {
                                         panel = Panel.HISTORY
                                     },
                                 )
+                                DropdownMenuItem(
+                                    text = { Text("NPM 构建") },
+                                    leadingIcon = { Icon(Icons.Outlined.Build, contentDescription = null) },
+                                    onClick = {
+                                        menu = false
+                                        session.buildRunning = false
+                                        panel = Panel.BUILD
+                                    },
+                                )
                                 }
                                 HorizontalDivider(Modifier.padding(vertical = 4.dp))
                                 DropdownMenuItem(
@@ -328,10 +339,16 @@ fun IdeScreen() {
                 }
             },
         ) { inner ->
+            Box(Modifier.padding(inner).fillMaxSize()) {
+            dev.webviewide.build.BuildHost(
+                session = session,
+                onHandle = { buildHandle = it },
+                modifier = Modifier.size(1.dp),
+            )
             Crossfade(
                 targetState = project != null,
                 animationSpec = AppMotion.effects(),
-                modifier = Modifier.padding(inner).fillMaxSize(),
+                modifier = Modifier.fillMaxSize(),
                 label = "workspace",
             ) { ready ->
                 val open = project
@@ -440,6 +457,7 @@ fun IdeScreen() {
                     }
                 }
             }
+            }
         }
     }
 
@@ -462,6 +480,16 @@ fun IdeScreen() {
             )
         }
         Panel.ABOUT -> AboutSheet(onDismiss = { panel = null })
+        Panel.BUILD -> BuildPanel(
+            handle = buildHandle,
+            running = session.buildRunning,
+            fraction = session.buildFraction,
+            label = session.buildLabel,
+            log = session.buildLog,
+            hasPackageJson = project?.srcDir?.let { java.io.File(it, "package.json").isFile } ?: false,
+            onRunning = { session.buildRunning = true },
+            onDismiss = { panel = null },
+        )
         Panel.HISTORY -> HistorySheet(
             fileName = session.current?.name ?: "",
             entries = session.historyEntries(),
