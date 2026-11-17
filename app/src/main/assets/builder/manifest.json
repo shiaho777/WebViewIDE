@@ -1,0 +1,16 @@
+{
+  "generator": "tools/builder/build.mjs",
+  "sources": {
+    "src/index.html": "49437f61c0ac5cf1e8e808960b4820f20295621850725c1bbbf2d24e60c63643",
+    "src/main.ts": "a6ea77102a902544ac516bb74f20a7f1396e04d13188c0b5d33a95380f171875",
+    "src/npm/install.ts": "0cdabb5c673cba785fec20fa03c88cac5cbee962e60f5a39ae04d652707fa834",
+    "src/npm/memfs.ts": "b9374d3575b6ba2d50431d1a2683d293817d6e4ffe45dfb95dd32f7323d0642b",
+    "src/npm/native.ts": "b4a4bcea1e240e0f427e004849d7758c821181cfab2f9bf343ccfb5cbc045c58",
+    "src/npm/semver.ts": "674b16d899db4b8bb44204b0b0bf7826e26a3d212e7253782e3cf9be1539de11",
+    "src/npm/tar.ts": "d7a55f0ec65187e673078e0ab61040864863bc336cb16a320d1077c984128154"
+  },
+  "buildScript": "d59e86deb876bae0330e3fac2a308ca86fb33b5ce02ee23dbf1fcb38a2b5b78f",
+  "packageJson": "2dbf6783e6868a4ca12b8355ab9d83f856655f509a297433e530a651d978a129",
+  "lockfile": "028507cb5681c68d06d96a31887bfb1e700ac0736276307e79a62180af2ded41",
+  "bundle": "04aadc58a5a6f2d9b3af6ba0993216f20d37135a14347541195a0e6a54547a42"
+}

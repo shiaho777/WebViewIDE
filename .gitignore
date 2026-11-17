@@ -25,3 +25,6 @@ app/src/main/assets/runtime/template.apk
 
 # Editor bundle workspace: sources + built assets are committed, deps are not
 tools/editor/node_modules/
+
+# Builder bundle workspace: sources + built assets are committed, deps are not
+tools/builder/node_modules/
