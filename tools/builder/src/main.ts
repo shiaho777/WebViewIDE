@@ -26,6 +26,30 @@ const fs = new MemFs();
 const netPending = new Map<number, (bytes: Uint8Array) => void>();
 let netSeq = 0;
 
+// Pending fsWrite requests resolved by Kotlin fsWriteResponse messages.
+const fsPending = new Map<number, (ok: boolean) => void>();
+let fsSeq = 0;
+
+function writeDisk(path: string, text: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const id = ++fsSeq;
+    fsPending.set(id, resolve);
+    post("fsWrite", { path, text }, id);
+  });
+}
+
+// Pending fsRead requests resolved by Kotlin fsReadResponse messages.
+const fsReadPending = new Map<number, (text: string | null) => void>();
+let fsReadSeq = 0;
+
+function readDisk(path: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    const id = ++fsReadSeq;
+    fsReadPending.set(id, resolve);
+    post("fsRead", { path }, id);
+  });
+}
+
 function b64ToBytes(b64: string): Uint8Array {
   const bin = atob(b64);
   const out = new Uint8Array(bin.length);
@@ -53,7 +77,12 @@ const log = {
 };
 
 async function runInstall(id: number): Promise<void> {
-  const pkgText = fs.readText("package.json");
+  let pkgText = fs.readText("package.json");
+  if (!pkgText) {
+    // memfs starts empty; load the manifest from the project dir via the bridge.
+    pkgText = await readDisk("package.json");
+    if (pkgText) fs.writeText("package.json", pkgText);
+  }
   if (!pkgText) {
     post("done", { ok: false, summary: "缺少 package.json" }, id);
     return;
@@ -61,6 +90,17 @@ async function runInstall(id: number): Promise<void> {
   const pkg = JSON.parse(pkgText) as { dependencies?: Record<string, string> };
   const result = await install(pkg.dependencies ?? {}, net, fs, log);
   if (result.ok) {
+    // Persist node_modules + lock to the project dir, then evict from memory.
+    const paths = fs.list("node_modules");
+    let written = 0;
+    for (const p of paths) {
+      const text = fs.readText(p);
+      if (text !== null && (await writeDisk(p, text))) written++;
+    }
+    const lock = fs.readText("package-lock.json");
+    if (lock !== null) await writeDisk("package-lock.json", lock);
+    fs.evictPrefix("node_modules");
+    log.log("info", `已写盘 ${written} 个依赖文件`);
     post("done", { ok: true, summary: `已安装 ${Object.keys(result.installed).length} 个包` }, id);
   } else {
     post("error", { message: result.error ?? "安装失败" }, id);
@@ -91,10 +131,22 @@ function handle(msg: Msg): void {
       }
       break;
     }
-    case "fsReadResponse":
-    case "fsWriteResponse":
-      // handled by the persistence layer in N4.
+    case "fsWriteResponse": {
+      const resolver = fsPending.get(id);
+      if (resolver) {
+        fsPending.delete(id);
+        resolver(Boolean(p.ok));
+      }
       break;
+    }
+    case "fsReadResponse": {
+      const resolver = fsReadPending.get(id);
+      if (resolver) {
+        fsReadPending.delete(id);
+        resolver(p.exists ? String(p.text ?? "") : null);
+      }
+      break;
+    }
     default:
       break;
   }
@@ -108,4 +160,14 @@ window.__wviBuildReceive = (json: string) => {
   }
 };
 
-post("ready", {});
+// The WviBuild interface may be injected slightly after the bundle runs; retry
+// the ready signal until the bridge is present so Kotlin never misses it.
+let readyTries = 0;
+function emitReady(): void {
+  if (window.WviBuild) {
+    post("ready", {});
+    return;
+  }
+  if (++readyTries < 100) setTimeout(emitReady, 50);
+}
+emitReady();
