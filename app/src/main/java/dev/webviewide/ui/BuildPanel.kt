@@ -33,6 +33,7 @@ internal fun BuildPanel(
     log: List<String>,
     hasPackageJson: Boolean,
     onRunning: () -> Unit,
+    onStartBuild: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
@@ -54,7 +55,7 @@ internal fun BuildPanel(
                     modifier = Modifier.weight(1f),
                 ) { Text("安装依赖") }
                 OutlinedButton(
-                    onClick = { onRunning(); handle?.send(BuildBridge.build(2)) },
+                    onClick = { onRunning(); onStartBuild(); handle?.send(BuildBridge.build(2)) },
                     enabled = handle != null && !running && hasPackageJson,
                     modifier = Modifier.weight(1f),
                 ) { Text("构建") }

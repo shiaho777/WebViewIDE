@@ -133,6 +133,9 @@ fun IdeScreen() {
     var menu by remember { mutableStateOf(false) }
     var naming by remember { mutableStateOf<NameAsk?>(null) }
     var buildHandle by remember { mutableStateOf<dev.webviewide.build.BuildHandle?>(null) }
+    val buildCtl = remember {
+        dev.webviewide.build.BuildController(context.filesDir, { session.project?.srcDir }) { m -> buildHandle?.send(m) }
+    }
     val project = session.project
     val currentPath = session.current?.let { file ->
         project?.let { open -> runCatching { ProjectStore.relative(open, file) }.getOrDefault(file.name) }
@@ -342,6 +345,7 @@ fun IdeScreen() {
             Box(Modifier.padding(inner).fillMaxSize()) {
             dev.webviewide.build.BuildHost(
                 session = session,
+                buildCtl = buildCtl,
                 onHandle = { buildHandle = it },
                 modifier = Modifier.size(1.dp),
             )
@@ -488,6 +492,7 @@ fun IdeScreen() {
             log = session.buildLog,
             hasPackageJson = project?.srcDir?.let { java.io.File(it, "package.json").isFile } ?: false,
             onRunning = { session.buildRunning = true },
+            onStartBuild = { buildCtl.startBuild(2) },
             onDismiss = { panel = null },
         )
         Panel.HISTORY -> HistorySheet(
