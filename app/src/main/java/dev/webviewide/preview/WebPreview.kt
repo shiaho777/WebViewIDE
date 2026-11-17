@@ -35,6 +35,7 @@ import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Terminal
+import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledTonalButton
@@ -141,6 +142,8 @@ fun WebPreview(
     var console by remember { mutableStateOf(listOf<ConsoleEntry>()) }
     var showConsole by remember { mutableStateOf(false) }
     val errorCount = console.count { it.level == "error" }
+    var inspecting by remember { mutableStateOf(false) }
+    var domInfo by remember { mutableStateOf<DomInspector.ElementInfo?>(null) }
     var viewport by remember { mutableIntStateOf(0) }
     var fullscreen by remember { mutableStateOf<android.view.View?>(null) }
     var fullscreenCallback by remember { mutableStateOf<android.webkit.WebChromeClient.CustomViewCallback?>(null) }
@@ -159,6 +162,7 @@ fun WebPreview(
     }
     SideEffect {
         host.onConsole = { entry -> console = (console + entry).takeLast(500) }
+        host.onDomPick = { info -> domInfo = info }
         host.onProgress = { progress = it }
         host.requestPermissions = { permissions, done ->
             host.permissionDone = done
@@ -249,6 +253,22 @@ fun WebPreview(
                 }
             }
             Spacer(Modifier.weight(1f))
+            FilledTonalIconButton(onClick = {
+                inspecting = !inspecting
+                val web = webRef.value
+                if (inspecting) {
+                    domInfo = null
+                    web?.evaluateJavascript(DomInspector.enableScript, null)
+                } else {
+                    web?.evaluateJavascript(DomInspector.disableScript, null)
+                }
+            }) {
+                Icon(
+                    Icons.Outlined.TouchApp,
+                    contentDescription = "检查元素",
+                    tint = if (inspecting) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             if (compact) {
                 androidx.compose.material3.BadgedBox(
                     badge = {
@@ -386,6 +406,32 @@ fun WebPreview(
                             ConsoleRow(entry, onOpenSource)
                         }
                     }
+                }
+            }
+        }
+        AnimatedVisibility(
+            visible = domInfo != null,
+            enter = fadeIn(animationSpec = AppMotion.effects()),
+            exit = fadeOut(animationSpec = AppMotion.effectsFast()),
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxWidth().heightIn(max = 220.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+            ) {
+                Column(Modifier.padding(12.dp)) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("元素", style = MaterialTheme.typography.titleSmall)
+                        TextButton(onClick = { domInfo = null }) { Text("关闭") }
+                    }
+                    Text(
+                        domInfo?.let { DomInspector.format(it) } ?: "",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                    )
                 }
             }
         }

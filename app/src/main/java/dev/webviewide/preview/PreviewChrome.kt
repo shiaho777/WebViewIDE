@@ -25,6 +25,7 @@ data class ConsoleEntry(
 
 class PreviewHostState {
     var onConsole: (ConsoleEntry) -> Unit = {}
+    var onDomPick: (DomInspector.ElementInfo) -> Unit = {}
     var onProgress: (Int) -> Unit = {}
     var requestPermissions: (Array<String>, (Boolean) -> Unit) -> Unit = { _, done -> done(false) }
     var chooseFile: (ValueCallback<Array<Uri>>?, WebChromeClient.FileChooserParams?) -> Unit =
@@ -43,12 +44,18 @@ class PreviewChrome(
     private val host: PreviewHostState,
 ) : WebChromeClient() {
     override fun onConsoleMessage(message: ConsoleMessage): Boolean {
+        val text = message.message().orEmpty()
+        val picked = DomInspector.parse(text)
+        if (picked != null) {
+            host.onDomPick(picked)
+            return true
+        }
         host.onConsole(
             ConsoleEntry(
                 level = message.messageLevel().name.lowercase(),
                 source = message.sourceId().orEmpty(),
                 line = message.lineNumber(),
-                message = message.message().orEmpty(),
+                message = text,
             ),
         )
         return true
