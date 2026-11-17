@@ -28,3 +28,6 @@ tools/editor/node_modules/
 
 # Builder bundle workspace: sources + built assets are committed, deps are not
 tools/builder/node_modules/
+
+# Builder test artifacts
+tools/builder/test/.wvi-esb-test.cjs

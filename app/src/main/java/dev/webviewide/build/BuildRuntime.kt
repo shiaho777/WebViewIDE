@@ -48,7 +48,9 @@ fun BuildRuntime(
                 WebView(context).apply {
                     settings.javaScriptEnabled = true
                     settings.domStorageEnabled = true
-                    settings.allowFileAccess = false
+                    // Loads only our own bundle + cached esbuild wasm from the app's
+                    // files dir (no untrusted content), so file access is safe here.
+                    settings.allowFileAccess = true
                     settings.allowContentAccess = false
                     settings.textZoom = 100
                     addJavascriptInterface(object {

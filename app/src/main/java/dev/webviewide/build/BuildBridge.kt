@@ -36,6 +36,21 @@ object BuildBridge {
     fun fsWriteResponse(id: Long, ok: Boolean, error: String): String =
         message(id, "fsWriteResponse", mapOf("ok" to ok, "error" to error))
 
+    /** Local URL of the cached esbuild wasm, pushed before a build. */
+    fun wasmUrl(id: Long, url: String): String = message(id, "wasmUrl", mapOf("url" to url))
+
+    /** Response to an up "readSource": file content as base64. */
+    fun readSourceResponse(id: Long, b64: String, exists: Boolean): String =
+        message(id, "readSourceResponse", mapOf("b64" to b64, "exists" to exists))
+
+    /** Response to an up "listSource": relative file paths. */
+    fun listSourceResponse(id: Long, paths: List<String>): String =
+        message(id, "listSourceResponse", mapOf("paths" to paths))
+
+    /** Ack for an up "writeDist". */
+    fun writeDistResponse(id: Long, ok: Boolean): String =
+        message(id, "writeDistResponse", mapOf("ok" to ok))
+
     private fun message(id: Long, type: String, payload: Map<String, Any?>): String =
         encodeJson(mapOf("id" to id, "type" to type, "payload" to payload))
 
@@ -49,6 +64,9 @@ sealed interface BuildEvent {
     data class Net(val url: String, val method: String, val integrity: String) : BuildEvent
     data class FsWrite(val path: String, val text: String?, val b64: String?) : BuildEvent
     data class FsRead(val path: String) : BuildEvent
+    data class ReadSource(val path: String) : BuildEvent
+    data object ListSource : BuildEvent
+    data class WriteDist(val path: String, val b64: String) : BuildEvent
     data class Done(val ok: Boolean, val summary: String) : BuildEvent
     data class Error(val message: String) : BuildEvent
 }
@@ -73,6 +91,9 @@ object BuildEvents {
                 b64 = p["b64"] as? String,
             )
             "fsRead" -> BuildEvent.FsRead(p.string("path"))
+            "readSource" -> BuildEvent.ReadSource(p.string("path"))
+            "listSource" -> BuildEvent.ListSource
+            "writeDist" -> BuildEvent.WriteDist(p.string("path"), p.string("b64"))
             "done" -> BuildEvent.Done(p["ok"] as? Boolean ?: false, p.string("summary"))
             "error" -> BuildEvent.Error(p.string("message"))
             else -> return null

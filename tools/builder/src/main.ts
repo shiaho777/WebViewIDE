@@ -2,6 +2,7 @@
 // install runs the npm subset client; build (esbuild-wasm) is wired in N5.
 import { install, type NetClient } from "./npm/install";
 import { MemFs } from "./npm/memfs";
+import { ensureEsbuild, buildProject } from "./build/esbuild";
 
 declare global {
   interface Window {
@@ -57,6 +58,45 @@ function b64ToBytes(b64: string): Uint8Array {
   return out;
 }
 
+function bytesToB64(bytes: Uint8Array): string {
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+
+// Build-stage IO: read source bytes / list source files / write dist bytes.
+const readSourcePending = new Map<number, (b64: string | null) => void>();
+let readSourceSeq = 0;
+function readSource(path: string): Promise<Uint8Array | null> {
+  return new Promise((resolve) => {
+    const id = ++readSourceSeq;
+    readSourcePending.set(id, (b64) => resolve(b64 === null ? null : b64ToBytes(b64)));
+    post("readSource", { path }, id);
+  });
+}
+
+const listSourcePending = new Map<number, (paths: string[]) => void>();
+let listSourceSeq = 0;
+function listSource(): Promise<string[]> {
+  return new Promise((resolve) => {
+    const id = ++listSourceSeq;
+    listSourcePending.set(id, resolve);
+    post("listSource", {}, id);
+  });
+}
+
+const writeDistPending = new Map<number, (ok: boolean) => void>();
+let writeDistSeq = 0;
+function writeDist(path: string, bytes: Uint8Array): Promise<boolean> {
+  return new Promise((resolve) => {
+    const id = ++writeDistSeq;
+    writeDistPending.set(id, resolve);
+    post("writeDist", { path, b64: bytesToB64(bytes) }, id);
+  });
+}
+
+let wasmUrl = "";
+
 const net: NetClient = {
   fetch(url: string, integrity?: string): Promise<Uint8Array> {
     return new Promise((resolve) => {
@@ -108,6 +148,52 @@ async function runInstall(id: number): Promise<void> {
   }
 }
 
+async function waitForWasmUrl(): Promise<boolean> {
+  for (let i = 0; i < 600 && !wasmUrl; i++) {
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  return !!wasmUrl;
+}
+
+async function runBuild(id: number): Promise<void> {
+  if (!(await waitForWasmUrl())) {
+    post("done", { ok: false, summary: "esbuild wasm 未就绪" }, id);
+    return;
+  }
+  log.progress(0.1, "加载源文件");
+  const paths = await listSource();
+  for (const p of paths) {
+    if (p.startsWith("dist/") || p.startsWith("node_modules/")) continue;
+    const bytes = await readSource(p);
+    if (bytes) fs.write(p, bytes);
+  }
+  // Load installed dependencies back from disk into memfs for bundling.
+  const nmPaths = await listSource();
+  for (const p of nmPaths) {
+    if (!p.startsWith("node_modules/")) continue;
+    const bytes = await readSource(p);
+    if (bytes) fs.write(p, bytes);
+  }
+  const entry = ["src/main.tsx", "src/main.jsx", "src/main.ts", "src/main.js", "main.js", "index.js"]
+    .find((c) => fs.exists(c));
+  if (!entry) {
+    post("done", { ok: false, summary: "找不到入口（src/main.* 或 index.js）" }, id);
+    return;
+  }
+  log.progress(0.4, "esbuild 打包（TS/JSX 仅转译，不做类型检查）");
+  await ensureEsbuild(wasmUrl);
+  const outputs = await buildProject(fs, entry);
+  log.progress(0.8, "写出 dist");
+  for (const o of outputs) {
+    await writeDist("dist/" + o.path, o.contents);
+  }
+  // Copy index.html into dist so the preview has an entry.
+  const html = fs.readText("index.html");
+  if (html) await writeDist("dist/index.html", new TextEncoder().encode(html));
+  log.progress(1, "构建完成");
+  post("done", { ok: true, summary: `构建完成，${outputs.length} 个产物` }, id);
+}
+
 function handle(msg: Msg): void {
   const id = msg.id ?? 0;
   const p = msg.payload ?? {};
@@ -116,9 +202,13 @@ function handle(msg: Msg): void {
       void runInstall(id);
       break;
     case "build":
-      // esbuild-wasm pipeline wired in N5.
-      post("log", { level: "info", text: "build 尚未接线（N5）" }, id);
-      post("done", { ok: false, summary: "build pending" }, id);
+      void runBuild(id).catch((e) => {
+        post("error", { message: String(e) }, id);
+        post("done", { ok: false, summary: String(e) }, id);
+      });
+      break;
+    case "wasmUrl":
+      wasmUrl = String(p.url ?? "");
       break;
     case "cancel":
       post("done", { ok: false, summary: "cancelled" }, id);
@@ -144,6 +234,30 @@ function handle(msg: Msg): void {
       if (resolver) {
         fsReadPending.delete(id);
         resolver(p.exists ? String(p.text ?? "") : null);
+      }
+      break;
+    }
+    case "readSourceResponse": {
+      const resolver = readSourcePending.get(id);
+      if (resolver) {
+        readSourcePending.delete(id);
+        resolver(p.exists ? String(p.b64 ?? "") : null);
+      }
+      break;
+    }
+    case "listSourceResponse": {
+      const resolver = listSourcePending.get(id);
+      if (resolver) {
+        listSourcePending.delete(id);
+        resolver(Array.isArray(p.paths) ? (p.paths as string[]) : []);
+      }
+      break;
+    }
+    case "writeDistResponse": {
+      const resolver = writeDistPending.get(id);
+      if (resolver) {
+        writeDistPending.delete(id);
+        resolver(Boolean(p.ok));
       }
       break;
     }
