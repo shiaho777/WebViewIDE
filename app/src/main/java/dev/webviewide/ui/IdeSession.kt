@@ -50,6 +50,8 @@ class IdeSession(
     /** True until the first project lookup finishes; distinguishes loading from a fresh install. */
     var loading by mutableStateOf(true)
     var current by mutableStateOf<File?>(null)
+    /** Open editor tabs in visit order; current is always a member when non-null. */
+    var openFiles by mutableStateOf(listOf<File>())
     var draft by mutableStateOf("")
     var status by mutableStateOf<String?>(null)
     var busy by mutableStateOf(false)
@@ -358,11 +360,23 @@ class IdeSession(
     private fun load(file: File?) {
         saveJob?.cancel()
         current = file
+        openFiles = if (file == null) emptyList() else (openFiles.filter { it != file } + file)
         draft = file?.let { readFile(it) }.orEmpty()
         saver.discardThrough(version)
         if (file != null) {
             saver.noteDiskState(file)
             reveal(file)
+        }
+    }
+
+    /** Closes a tab; if it was active, activates the neighbour (or empty state). */
+    fun closeFile(file: File) {
+        val wasCurrent = current == file
+        if (wasCurrent) flushBlocking()
+        val remaining = openFiles.filter { it != file }
+        openFiles = remaining
+        if (wasCurrent) {
+            load(remaining.lastOrNull())
         }
     }
 
@@ -640,6 +654,7 @@ class IdeSession(
             // Fresh install: no project yet, the welcome screen takes over.
             project = null
             current = null
+            openFiles = emptyList()
             draft = ""
             url = null
             lanUrl = null
@@ -664,6 +679,7 @@ class IdeSession(
         val entry = File(next.serveDir, next.entryFile)
         val file = if (entry.isFile) entry else ProjectStore.listUnder(next.srcDir).firstOrNull()
         current = file
+        openFiles = listOfNotNull(file)
         draft = file?.let { readFile(it) }.orEmpty()
         saver.discardThrough(version)
         if (file != null) reveal(file)

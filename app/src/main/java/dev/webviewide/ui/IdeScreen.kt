@@ -16,6 +16,8 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -99,6 +101,7 @@ import dev.webviewide.ui.editor.CmCodeEditor
 import dev.webviewide.ui.editor.CodeEditor
 import dev.webviewide.ui.editor.ImageFace
 import dev.webviewide.ui.theme.AppMotion
+import java.io.File
 import kotlinx.coroutines.launch
 
 private enum class Panel { PROJECTS, SETTINGS, PACKAGE, ABOUT }
@@ -354,7 +357,15 @@ fun IdeScreen() {
                                 state = bifold,
                                 modifier = Modifier.fillMaxSize(),
                                 codeFace = {
+                                    Column(Modifier.fillMaxSize()) {
+                                        FileTabBar(
+                                            files = session.openFiles,
+                                            current = session.current,
+                                            onSelect = { session.select(it) },
+                                            onClose = { session.closeFile(it) },
+                                        )
                                     AnimatedContent(
+                                        modifier = Modifier.weight(1f),
                                         targetState = session.current,
                                         contentKey = { it?.path },
                                         transitionSpec = {
@@ -388,6 +399,7 @@ fun IdeScreen() {
                                                 onGotoConsumed = { session.pendingGotoLine = 0 },
                                             )
                                         }
+                                    }
                                     }
                                 },
                                 previewFace = {
@@ -626,6 +638,42 @@ private fun StatusBanner(message: String?, onDismiss: () -> Unit) {
                 }
                 IconButton(onClick = onDismiss) {
                     Icon(Icons.Outlined.Close, contentDescription = "关闭", modifier = Modifier.size(18.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FileTabBar(
+    files: List<File>,
+    current: File?,
+    onSelect: (File) -> Unit,
+    onClose: (File) -> Unit,
+) {
+    if (files.isEmpty()) return
+    Surface(color = MaterialTheme.colorScheme.surfaceContainerLow) {
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 6.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            files.forEach { file ->
+                val active = file == current
+                Surface(
+                    onClick = { onSelect(file) },
+                    shape = MaterialTheme.shapes.small,
+                    color = if (active) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+                    contentColor = if (active) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                ) {
+                    Row(
+                        Modifier.padding(start = 12.dp, end = 2.dp, top = 4.dp, bottom = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(file.name, style = MaterialTheme.typography.labelMedium, maxLines = 1)
+                        IconButton(onClick = { onClose(file) }, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Outlined.Close, contentDescription = "关闭 ${file.name}", modifier = Modifier.size(14.dp))
+                        }
+                    }
                 }
             }
         }
