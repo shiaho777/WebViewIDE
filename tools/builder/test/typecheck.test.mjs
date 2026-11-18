@@ -71,15 +71,15 @@ test("clean TS passes and DOM lib is available", async () => {
   await cleanup();
 });
 
-test(".vue import resolves via shim; vue-internal not checked", async () => {
+test("without vue deps: shim fallback + explicit note", async () => {
   const { mod, cleanup } = await loadTc();
   const fs = new mod.MemFs();
   fs.writeText("src/App.vue", "<template><b>{{n}}</b></template><script setup lang=\"ts\">const n: number = 'bad'</script>");
   fs.writeText("src/main.ts", "import App from './App.vue';\nconsole.log(App);\n");
   const r = await mod.runTypecheck(fs, libsText, ts);
-  // main.ts is clean; the SFC's internal type error is out of scope for v1.
   assert.equal(r.ok, true, r.errors.join("\n"));
   assert.equal(r.checkedFiles, 1);
+  assert.ok(r.notes.some((n) => n.includes("未安装 vue")), r.notes.join("\n"));
   await cleanup();
 });
 
@@ -90,5 +90,93 @@ test("no ts files -> trivially ok", async () => {
   const r = await mod.runTypecheck(fs, libsText, ts);
   assert.equal(r.ok, true);
   assert.equal(r.checkedFiles, 0);
+  await cleanup();
+});
+
+// ---- SFC-internal checking (real compiler-sfc asset + vue type stub) ----
+import vm from "node:vm";
+
+async function loadVueCompiler() {
+  const code = await readFile(join(here, "../../../app/src/main/assets/builder/vue-compiler.js"), "utf8");
+  const sandbox = { console, setTimeout, clearTimeout, TextEncoder, TextDecoder, URL, process: { env: {} } };
+  sandbox.window = sandbox;
+  sandbox.self = sandbox;
+  vm.createContext(sandbox);
+  vm.runInContext(code, sandbox, { filename: "vue-compiler.js" });
+  return sandbox.VueCompilerSFC;
+}
+
+// Minimal but real-shaped vue typings: ref<T> returns Ref<T> with typed .value.
+function vueStub(fs) {
+  fs.writeText("node_modules/vue/package.json", JSON.stringify({ name: "vue", version: "3.5.45", module: "index.js", types: "index.d.ts" }));
+  fs.writeText("node_modules/vue/index.js", "export const ref = (v) => ({ value: v });\nexport const createApp = (c) => ({ mount: () => {} });\n");
+  fs.writeText(
+    "node_modules/vue/index.d.ts",
+    "export interface Ref<T> { value: T }\nexport declare function ref<T>(value: T): Ref<T>;\nexport declare function ref<T = any>(): Ref<T | undefined>;\nexport declare function createApp(root: any): { mount(el: string | Element): void };\nexport declare function defineComponent<T>(c: T): T;\nexport declare function openBlock(): void;\nexport declare function createElementBlock(...args: any[]): any;\nexport declare function createElementVNode(...args: any[]): any;\nexport declare function toDisplayString(v: any): string;\nexport declare function withDirectives(...args: any[]): any;\nexport declare const vModelText: any;\n",
+  );
+}
+
+test("SFC script-setup type error is reported against the .vue file", async () => {
+  const { mod, cleanup } = await loadTc();
+  const compiler = await loadVueCompiler();
+  const fs = new mod.MemFs();
+  vueStub(fs);
+  fs.writeText(
+    "src/App.vue",
+    `<template><b>{{ n }}</b></template>\n<script setup lang="ts">\nimport { ref } from 'vue'\nconst n = ref<number>('bad')\n</script>`,
+  );
+  fs.writeText("src/main.ts", "import { createApp } from 'vue';\nimport App from './App.vue';\ncreateApp(App).mount('#app');");
+  const r = await mod.runTypecheck(fs, libsText, ts, compiler);
+  assert.equal(r.ok, false);
+  const hit = r.errors.find((e) => e.startsWith("src/App.vue:"));
+  assert.ok(hit, "error must be reported against .vue, got:\n" + r.errors.join("\n"));
+  // 'bad' sits on line 4 of the SFC; sourcemap must land there.
+  assert.ok(/src\/App\.vue:4:/.test(hit), "expected line 4, got: " + hit);
+  await cleanup();
+});
+
+test("SFC template expression type error maps to the template line", async () => {
+  const { mod, cleanup } = await loadTc();
+  const compiler = await loadVueCompiler();
+  const fs = new mod.MemFs();
+  vueStub(fs);
+  fs.writeText(
+    "src/App.vue",
+    `<template>\n  <b>{{ n.toFixed(2) }}</b>\n</template>\n<script setup lang="ts">\nimport { ref } from 'vue'\nconst n = ref<string>('x')\n</script>`,
+  );
+  fs.writeText("src/main.ts", "import { createApp } from 'vue';\nimport App from './App.vue';\ncreateApp(App).mount('#app');");
+  const r = await mod.runTypecheck(fs, libsText, ts, compiler);
+  assert.equal(r.ok, false);
+  const hit = r.errors.find((e) => e.startsWith("src/App.vue:") && e.includes("toFixed"));
+  assert.ok(hit, "template error expected, got:\n" + r.errors.join("\n"));
+  assert.ok(/src\/App\.vue:2:/.test(hit), "expected template line 2, got: " + hit);
+  await cleanup();
+});
+
+test("clean typed SFC passes", async () => {
+  const { mod, cleanup } = await loadTc();
+  const compiler = await loadVueCompiler();
+  const fs = new mod.MemFs();
+  vueStub(fs);
+  fs.writeText(
+    "src/App.vue",
+    `<template><button @click="n++">{{ n }}</button></template>\n<script setup lang="ts">\nimport { ref } from 'vue'\nconst n = ref<number>(0)\n</script>\n<style scoped>button { color: red }</style>`,
+  );
+  fs.writeText("src/main.ts", "import { createApp } from 'vue';\nimport App from './App.vue';\ncreateApp(App).mount('#app');");
+  const r = await mod.runTypecheck(fs, libsText, ts, compiler);
+  assert.equal(r.ok, true, r.errors.join("\n"));
+  await cleanup();
+});
+
+test("lang=js SFC is skipped with a note", async () => {
+  const { mod, cleanup } = await loadTc();
+  const compiler = await loadVueCompiler();
+  const fs = new mod.MemFs();
+  vueStub(fs);
+  fs.writeText("src/Legacy.vue", `<template><i>x</i></template>\n<script>export default { data() { return { bad: 1 } } }</script>`);
+  fs.writeText("src/main.ts", "import { createApp } from 'vue';\nimport L from './Legacy.vue';\ncreateApp(L).mount('#app');");
+  const r = await mod.runTypecheck(fs, libsText, ts, compiler);
+  assert.equal(r.ok, true, r.errors.join("\n"));
+  assert.ok(r.notes.some((n) => n.includes("js/无脚本")), r.notes.join("\n"));
   await cleanup();
 });
