@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -30,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import dev.webviewide.git.GitRepo
 import java.text.SimpleDateFormat
@@ -51,14 +50,27 @@ internal fun GitSheet(
     onDiff: (String) -> Unit,
     onDiffClose: () -> Unit,
     onRestore: (String) -> Unit,
+    credHosts: List<String>,
+    onCredRefresh: () -> Unit,
+    onCredSave: (String, String, String) -> Unit,
+    onCredRemove: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var message by remember { mutableStateOf("") }
     var confirmRestore by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(Unit) { onRefresh() }
+    var credHost by remember { mutableStateOf("gitee.com") }
+    var credUser by remember { mutableStateOf("") }
+    var credToken by remember { mutableStateOf("") }
+    LaunchedEffect(Unit) {
+        onRefresh()
+        onCredRefresh()
+    }
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
-            Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, bottom = 28.dp),
+            Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(start = 24.dp, end = 24.dp, bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text("Git", style = MaterialTheme.typography.titleLarge)
@@ -78,8 +90,8 @@ internal fun GitSheet(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 if (changes.isNotEmpty()) {
-                    LazyColumn(Modifier.heightIn(max = 220.dp)) {
-                        items(changes, key = { it.kind.name + ":" + it.path }) { change ->
+                    Column {
+                        changes.forEach { change ->
                             Row(
                                 Modifier.fillMaxWidth().padding(vertical = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically,
@@ -128,8 +140,8 @@ internal fun GitSheet(
                         modifier = Modifier.padding(top = 8.dp),
                     )
                     val fmt = SimpleDateFormat("MM-dd HH:mm", Locale.getDefault())
-                    LazyColumn(Modifier.heightIn(max = 180.dp)) {
-                        items(commits, key = { it.hash }) { commit ->
+                    Column {
+                        commits.forEach { commit ->
                             Row(
                                 Modifier.fillMaxWidth().padding(vertical = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically,
@@ -156,6 +168,51 @@ internal fun GitSheet(
                         }
                     }
                 }
+            }
+            HorizontalDivider(Modifier.padding(top = 8.dp))
+            Text("远程凭据", style = MaterialTheme.typography.titleSmall)
+            Text(
+                "用于 HTTPS 推送/拉取（Gitee、GitHub、GitCode 等）。令牌在本机加密保存，不会明文落盘。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            credHosts.forEach { host ->
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(host, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                    TextButton(onClick = { onCredRemove(host) }) { Text("删除") }
+                }
+            }
+            OutlinedTextField(
+                value = credHost,
+                onValueChange = { credHost = it },
+                label = { Text("站点（如 gitee.com）") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                value = credUser,
+                onValueChange = { credUser = it },
+                label = { Text("用户名") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
+                value = credToken,
+                onValueChange = { credToken = it },
+                label = { Text("私人令牌（PAT）") },
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation(),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Button(
+                onClick = {
+                    onCredSave(credHost, credUser, credToken)
+                    credToken = ""
+                },
+                enabled = credHost.isNotBlank() && credUser.isNotBlank() && credToken.isNotBlank(),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("保存凭据")
             }
         }
     }

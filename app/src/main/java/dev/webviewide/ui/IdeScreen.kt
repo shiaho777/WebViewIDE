@@ -528,6 +528,10 @@ fun IdeScreen() {
             onDiff = session::showGitDiff,
             onDiffClose = { session.gitDiff = null },
             onRestore = session::gitRestore,
+            credHosts = session.gitCredHosts,
+            onCredRefresh = session::refreshGitCreds,
+            onCredSave = session::saveGitCred,
+            onCredRemove = session::removeGitCred,
             onDismiss = { panel = null },
         )
         Panel.PACKAGE -> project?.let { open ->

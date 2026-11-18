@@ -22,6 +22,7 @@ import dev.webviewide.build.KeystoreException
 import dev.webviewide.build.KeystoreManager
 import dev.webviewide.build.Orientation
 import dev.webviewide.build.SignMode
+import dev.webviewide.git.CredentialStore
 import dev.webviewide.git.GitEnv
 import dev.webviewide.git.GitRepo
 import dev.webviewide.project.DocumentImport
@@ -79,6 +80,12 @@ class IdeSession(
     var gitLog by mutableStateOf(listOf<GitRepo.CommitInfo>())
     /** path to unified diff text while the diff viewer is open. */
     var gitDiff by mutableStateOf<Pair<String, String>?>(null)
+    var gitCredHosts by mutableStateOf(listOf<String>())
+    private val credentials = CredentialStore(
+        File(app.filesDir, "git"),
+        seal = { KeystoreManager.wrap(it) },
+        unseal = { KeystoreManager.unwrap(it) },
+    )
 
     fun requestProjectExport() {
         projectExportRequested = true
@@ -525,6 +532,40 @@ class IdeSession(
                 },
                 onFailure = { status = it.message ?: "提交失败" },
             )
+        }
+    }
+
+    fun refreshGitCreds() {
+        scope.launch {
+            gitCredHosts = withContext(Dispatchers.IO) { runCatching { credentials.hosts() }.getOrDefault(emptyList()) }
+        }
+    }
+
+    fun saveGitCred(host: String, user: String, token: String) {
+        val normalized = CredentialStore.normalizeHost(host)
+        if (normalized.isBlank() || user.isBlank() || token.isBlank()) {
+            status = "站点、用户名、令牌都要填"
+            return
+        }
+        scope.launch {
+            val outcome = withContext(Dispatchers.IO) {
+                runCatching { credentials.put(normalized, user.trim(), token.trim()) }
+            }
+            outcome.fold(
+                onSuccess = {
+                    status = "凭据已加密保存"
+                    refreshGitCreds()
+                },
+                onFailure = { status = it.message ?: "保存凭据失败" },
+            )
+        }
+    }
+
+    fun removeGitCred(host: String) {
+        scope.launch {
+            withContext(Dispatchers.IO) { runCatching { credentials.remove(host) } }
+            status = "已删除 $host 的凭据"
+            refreshGitCreds()
         }
     }
 
