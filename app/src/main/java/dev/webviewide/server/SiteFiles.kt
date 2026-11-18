@@ -114,6 +114,8 @@ object SiteFiles {
 
     private fun fileHit(root: File, relative: String): SiteHit.FileHit? {
         if (relative.isBlank()) return null
+        // Never serve dot-prefixed segments (.git/config, .env, ...) over LAN.
+        if (relative.split('/').any { it.startsWith(".") }) return null
         val target = File(root, relative)
         if (!isInside(root, target) || !target.isFile) return null
         return SiteHit.FileHit(target, isHtmlMime(mime(target.name)))

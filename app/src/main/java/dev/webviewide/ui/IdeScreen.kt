@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AccountTree
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.AutoFixHigh
@@ -106,7 +107,7 @@ import dev.webviewide.ui.theme.AppMotion
 import java.io.File
 import kotlinx.coroutines.launch
 
-private enum class Panel { PROJECTS, SETTINGS, PACKAGE, ABOUT, HISTORY, BUILD }
+private enum class Panel { PROJECTS, SETTINGS, PACKAGE, ABOUT, HISTORY, BUILD, GIT }
 
 @Composable
 fun rememberIdeSession(): IdeSession {
@@ -312,6 +313,14 @@ fun IdeScreen() {
                                         panel = Panel.BUILD
                                     },
                                 )
+                                DropdownMenuItem(
+                                    text = { Text("Git") },
+                                    leadingIcon = { Icon(Icons.Outlined.AccountTree, contentDescription = null) },
+                                    onClick = {
+                                        menu = false
+                                        panel = Panel.GIT
+                                    },
+                                )
                                 }
                                 HorizontalDivider(Modifier.padding(vertical = 4.dp))
                                 DropdownMenuItem(
@@ -502,6 +511,15 @@ fun IdeScreen() {
                 session.rollback(ts)
                 panel = null
             },
+            onDismiss = { panel = null },
+        )
+        Panel.GIT -> GitSheet(
+            ready = session.gitReady,
+            changes = session.gitChanges,
+            busy = session.gitBusy,
+            onInit = session::gitInit,
+            onRefresh = session::refreshGit,
+            onCommit = session::gitCommit,
             onDismiss = { panel = null },
         )
         Panel.PACKAGE -> project?.let { open ->

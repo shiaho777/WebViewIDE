@@ -68,6 +68,9 @@ dependencies {
 
     implementation(files("libs/ARSCLib-1.4.0.jar"))
     implementation("com.android.tools.build:apksig:8.7.3")
+    // Pure-Java Git; no native binaries, no root. HTTPS transport is built in.
+    implementation(libs.jgit)
+    implementation(libs.slf4j.nop)
 
     testImplementation(libs.junit4)
     androidTestImplementation(platform(libs.androidx.compose.bom))
