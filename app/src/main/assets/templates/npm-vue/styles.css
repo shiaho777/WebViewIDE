@@ -1,0 +1,3 @@
+:root { --bg:#fbfcfd; --card:#fff; --line:#e3e8ee; --text:#3a4149; --muted:#6b7480; --brand:#61809b; }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--text); font:16px/1.55 -apple-system,"PingFang SC","Noto Sans SC",sans-serif; }

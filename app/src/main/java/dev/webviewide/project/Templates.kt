@@ -77,6 +77,13 @@ object Templates {
             accent = 0xFF7D94A8,
             accent2 = 0xFFA8B9C7,
         ),
+        Template(
+            id = "npm-vue",
+            name = "Vue 工程",
+            description = "单文件组件 + script setup TS，经 esbuild 打包到 dist",
+            accent = 0xFF84A292,
+            accent2 = 0xFFA2B5AA,
+        ),
     )
 
     val showcase: List<Template> = all.filter { it.showcase }
