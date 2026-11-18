@@ -16,6 +16,6 @@
   "devDependencies": {
     "@vue/compiler-sfc": "3.5.45",
     "esbuild": "^0.25.0",
-    "typescript": "^5.8.0"
+    "typescript": "^5.8.3"
   }
 }

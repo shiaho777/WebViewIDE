@@ -441,6 +441,12 @@ class IdeSession(
         }
     }
 
+    fun onTypecheckFinished(ok: Boolean, summary: String) {
+        buildRunning = false
+        appendBuildLog(summary)
+        status = summary
+    }
+
     private fun scheduleSave() {
         saveJob?.cancel()
         saveJob = scope.launch {
