@@ -3,6 +3,7 @@ package dev.webviewide.git
 import java.io.ByteArrayOutputStream
 import java.io.File
 import org.eclipse.jgit.api.Git
+import org.eclipse.jgit.api.MergeCommand
 import org.eclipse.jgit.api.MergeResult
 import org.eclipse.jgit.diff.DiffFormatter
 import org.eclipse.jgit.lib.Repository
@@ -128,6 +129,45 @@ class GitRepo(private val src: File) {
             error("拉取失败：本地与远端有分叉或冲突，先提交本地改动再处理")
         }
         "已拉取远端更新"
+    }
+
+    data class BranchInfo(val name: String, val current: Boolean)
+
+    /** Local branches, current first then alphabetical. */
+    fun branches(): List<BranchInfo> = use { git ->
+        val cur = git.repository.branch
+        git.branchList().call()
+            .map { it.name.removePrefix("refs/heads/") }
+            .sortedWith(compareBy({ it != cur }, { it }))
+            .map { BranchInfo(it, it == cur) }
+    }
+
+    /** Creates [name] at HEAD (does not switch). */
+    fun createBranch(name: String) {
+        require(name.isNotBlank() && !name.contains(' ')) { "分支名不能为空或含空格" }
+        use { git ->
+            git.branchCreate().setName(name.trim()).call()
+        }
+    }
+
+    /** Switches to [name]; caller must ensure a clean worktree first. */
+    fun checkout(name: String) {
+        use { git ->
+            git.checkout().setName(name).call()
+        }
+    }
+
+    /** Fast-forward-only merge of [name] into the current branch. */
+    fun merge(name: String): String = use { git ->
+        val ref = git.repository.findRef(name) ?: error("没有这个分支：$name")
+        val result = git.merge()
+            .include(ref)
+            .setFastForward(MergeCommand.FastForwardMode.FF_ONLY)
+            .call()
+        if (!result.mergeStatus.isSuccessful) {
+            error("合并失败：与 $name 有分叉，暂不支持自动合并")
+        }
+        "已合并 $name（快进）"
     }
 
     companion object {

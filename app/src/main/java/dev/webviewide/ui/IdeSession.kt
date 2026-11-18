@@ -82,6 +82,7 @@ class IdeSession(
     var gitDiff by mutableStateOf<Pair<String, String>?>(null)
     var gitCredHosts by mutableStateOf(listOf<String>())
     var gitRemote by mutableStateOf<String?>(null)
+    var gitBranches by mutableStateOf(listOf<GitRepo.BranchInfo>())
     private val credentials = CredentialStore(
         File(app.filesDir, "git"),
         seal = { KeystoreManager.wrap(it) },
@@ -511,6 +512,7 @@ class IdeSession(
             gitReady = false
             gitChanges = emptyList()
             gitRemote = null
+            gitBranches = emptyList()
             return
         }
         scope.launch {
@@ -518,8 +520,8 @@ class IdeSession(
                 runCatching {
                     GitEnv.init(app.filesDir)
                     val repo = GitRepo(open.srcDir)
-                    if (repo.exists()) listOf<Any?>(true, repo.status(), repo.log(), repo.remoteUrl())
-                    else listOf<Any?>(false, emptyList<GitRepo.Change>(), emptyList<GitRepo.CommitInfo>(), null)
+                    if (repo.exists()) listOf<Any?>(true, repo.status(), repo.log(), repo.remoteUrl(), repo.branches())
+                    else listOf<Any?>(false, emptyList<GitRepo.Change>(), emptyList<GitRepo.CommitInfo>(), null, emptyList<GitRepo.BranchInfo>())
                 }
             }
             outcome.fold(
@@ -530,6 +532,8 @@ class IdeSession(
                     @Suppress("UNCHECKED_CAST")
                     gitLog = values[2] as List<GitRepo.CommitInfo>
                     gitRemote = values[3] as String?
+                    @Suppress("UNCHECKED_CAST")
+                    gitBranches = values[4] as List<GitRepo.BranchInfo>
                 },
                 onFailure = { status = it.message ?: "读 Git 状态失败" },
             )
@@ -605,6 +609,94 @@ class IdeSession(
                     refreshGit()
                 },
                 onFailure = { status = it.message ?: "Git 初始化失败" },
+            )
+        }
+    }
+
+    fun gitCreateBranch(name: String) {
+        val open = project ?: return
+        if (name.isBlank()) {
+            status = "先写分支名"
+            return
+        }
+        gitBusy = true
+        scope.launch {
+            val outcome = withContext(Dispatchers.IO) {
+                runCatching { GitRepo(open.srcDir).createBranch(name) }
+            }
+            gitBusy = false
+            outcome.fold(
+                onSuccess = {
+                    status = "已新建分支 $name"
+                    refreshGit()
+                },
+                onFailure = { status = it.message ?: "新建分支失败" },
+            )
+        }
+    }
+
+    /** Reloads the active file after the worktree changed underneath us. */
+    private fun resyncAfterWorktreeChange(open: WebProject) {
+        val file = current
+        if (file != null && file.isFile) {
+            draft = readFile(file)
+            saver.discardThrough(version)
+            saver.noteDiskState(file)
+        } else if (file != null) {
+            // File vanished on the target branch: drop it from tabs.
+            openFiles = openFiles.filter { it != file }
+            current = openFiles.lastOrNull()
+            draft = current?.let { readFile(it) }.orEmpty()
+        }
+        docEpoch += 1
+        treeTick += 1
+        if (open.liveReload) scope.launch(Dispatchers.IO) { server.reload() }
+    }
+
+    fun gitCheckout(name: String) {
+        val open = project ?: return
+        flushBlocking()
+        gitBusy = true
+        scope.launch {
+            val outcome = withContext(Dispatchers.IO) {
+                runCatching {
+                    val repo = GitRepo(open.srcDir)
+                    if (repo.status().isNotEmpty()) error("有未提交的改动，先提交或恢复后再切换分支")
+                    repo.checkout(name)
+                }
+            }
+            gitBusy = false
+            outcome.fold(
+                onSuccess = {
+                    resyncAfterWorktreeChange(open)
+                    status = "已切换到 $name"
+                    refreshGit()
+                },
+                onFailure = { status = it.message ?: "切换分支失败" },
+            )
+        }
+    }
+
+    fun gitMerge(name: String) {
+        val open = project ?: return
+        flushBlocking()
+        gitBusy = true
+        scope.launch {
+            val outcome = withContext(Dispatchers.IO) {
+                runCatching {
+                    val repo = GitRepo(open.srcDir)
+                    if (repo.status().isNotEmpty()) error("有未提交的改动，先提交后再合并")
+                    repo.merge(name)
+                }
+            }
+            gitBusy = false
+            outcome.fold(
+                onSuccess = { msg ->
+                    resyncAfterWorktreeChange(open)
+                    status = msg
+                    refreshGit()
+                },
+                onFailure = { status = it.message ?: "合并失败" },
             )
         }
     }

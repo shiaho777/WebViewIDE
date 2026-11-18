@@ -58,10 +58,16 @@ internal fun GitSheet(
     onSetRemote: (String) -> Unit,
     onPush: () -> Unit,
     onPull: () -> Unit,
+    branches: List<GitRepo.BranchInfo>,
+    onBranchCreate: (String) -> Unit,
+    onBranchCheckout: (String) -> Unit,
+    onBranchMerge: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var message by remember { mutableStateOf("") }
     var confirmRestore by remember { mutableStateOf<String?>(null) }
+    var newBranch by remember { mutableStateOf("") }
+    var confirmMerge by remember { mutableStateOf<String?>(null) }
     var credHost by remember { mutableStateOf("gitee.com") }
     var credUser by remember { mutableStateOf("") }
     var credToken by remember { mutableStateOf("") }
@@ -176,6 +182,38 @@ internal fun GitSheet(
             }
             if (ready) {
                 HorizontalDivider(Modifier.padding(top = 8.dp))
+                Text("分支", style = MaterialTheme.typography.titleSmall)
+                branches.forEach { branch ->
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            branch.name + if (branch.current) "（当前）" else "",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontFamily = FontFamily.Monospace,
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (!branch.current) {
+                            TextButton(onClick = { onBranchCheckout(branch.name) }, enabled = !busy) { Text("切换") }
+                            TextButton(onClick = { confirmMerge = branch.name }, enabled = !busy) { Text("合并") }
+                        }
+                    }
+                }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = newBranch,
+                        onValueChange = { newBranch = it },
+                        label = { Text("新分支名") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(
+                        onClick = {
+                            onBranchCreate(newBranch)
+                            newBranch = ""
+                        },
+                        enabled = !busy && newBranch.isNotBlank(),
+                    ) { Text("新建") }
+                }
+                HorizontalDivider(Modifier.padding(top = 8.dp))
                 Text("远程同步", style = MaterialTheme.typography.titleSmall)
                 OutlinedTextField(
                     value = remoteInput,
@@ -274,6 +312,20 @@ internal fun GitSheet(
             dismissButton = { TextButton(onClick = { confirmRestore = null }) { Text("取消") } },
             title = { Text("恢复这个文件？") },
             text = { Text("$path 会回到最近一次提交的内容，当前未提交的修改会被丢弃。") },
+        )
+    }
+    confirmMerge?.let { name ->
+        AlertDialog(
+            onDismissRequest = { confirmMerge = null },
+            confirmButton = {
+                TextButton(onClick = {
+                    onBranchMerge(name)
+                    confirmMerge = null
+                }) { Text("合并") }
+            },
+            dismissButton = { TextButton(onClick = { confirmMerge = null }) { Text("取消") } },
+            title = { Text("合并 $name？") },
+            text = { Text("把 $name 快进合并到当前分支。有分叉时会报错，不会自动合并。") },
         )
     }
 }

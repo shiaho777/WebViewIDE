@@ -13,6 +13,49 @@ class GitRepoTest {
         GitEnv.init(createTempDirectory("git-home").toFile())
     }
 
+    @Test fun branchCreateCheckoutAndFfMerge() {
+        val src = createTempDirectory("git-branch").toFile()
+        try {
+            val repo = GitRepo(src)
+            repo.init()
+            File(src, "a.txt").writeText("base")
+            repo.commit("base")
+            assertEquals(listOf("main"), repo.branches().map { it.name })
+            assertTrue(repo.branches().single().current)
+
+            repo.createBranch("feature")
+            assertEquals(listOf("main", "feature"), repo.branches().map { it.name })
+            repo.checkout("feature")
+            assertTrue(repo.branches().first { it.name == "feature" }.current)
+            File(src, "a.txt").writeText("feature-work")
+            repo.commit("feat")
+
+            // main is behind feature -> ff merge succeeds.
+            repo.checkout("main")
+            assertEquals("base", File(src, "a.txt").readText())
+            val msg = repo.merge("feature")
+            assertTrue(msg.contains("feature"))
+            assertEquals("feature-work", File(src, "a.txt").readText())
+
+            // Diverged merge must fail clearly (no auto-merge).
+            repo.createBranch("other")
+            repo.checkout("other")
+            File(src, "a.txt").writeText("other-work")
+            repo.commit("other")
+            repo.checkout("main")
+            File(src, "a.txt").writeText("main-work")
+            repo.commit("main2")
+            try {
+                repo.merge("other")
+                org.junit.Assert.fail("diverged merge must not succeed")
+            } catch (e: IllegalStateException) {
+                assertTrue(e.message!!.contains("分叉"))
+            }
+        } finally {
+            src.deleteRecursively()
+        }
+    }
+
     @Test fun initStatusCommitRoundTrip() {
         val src = createTempDirectory("git-src").toFile()
         try {
@@ -140,5 +183,21 @@ class GitRepoTest {
         assertTrue(body.contains("saver.discardThrough(version)"))
         assertTrue(body.contains("server.reload"))
         assertTrue(session.contains("fun showGitDiff(path: String)"))
+    }
+
+    @Test fun branchOpsGuardDirtyWorktreeAndResync() {
+        val session = File("src/main/java/dev/webviewide/ui/IdeSession.kt").readText()
+        assertTrue(session.contains("fun gitCheckout(name: String)"))
+        assertTrue(session.contains("fun gitMerge(name: String)"))
+        assertTrue(session.contains("fun gitCreateBranch(name: String)"))
+        val checkout = session.substringAfter("fun gitCheckout(name: String)").substringBefore("fun gitMerge")
+        assertTrue(checkout.contains("flushBlocking()"))
+        assertTrue(checkout.contains("先提交或恢复后再切换分支"))
+        assertTrue(checkout.contains("resyncAfterWorktreeChange"))
+        val sheet = File("src/main/java/dev/webviewide/ui/GitSheet.kt").readText()
+        assertTrue(sheet.contains("新分支名"))
+        assertTrue(sheet.contains("合并 "))
+        val screen = File("src/main/java/dev/webviewide/ui/IdeScreen.kt").readText()
+        assertTrue(screen.contains("onBranchCheckout = session::gitCheckout"))
     }
 }

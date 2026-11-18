@@ -538,6 +538,10 @@ fun IdeScreen() {
             onSetRemote = session::gitSetRemote,
             onPush = session::gitPush,
             onPull = session::gitPull,
+            branches = session.gitBranches,
+            onBranchCreate = session::gitCreateBranch,
+            onBranchCheckout = session::gitCheckout,
+            onBranchMerge = session::gitMerge,
             onDismiss = { panel = null },
         )
         Panel.PACKAGE -> project?.let { open ->
