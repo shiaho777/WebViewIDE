@@ -81,6 +81,7 @@ class IdeSession(
     /** path to unified diff text while the diff viewer is open. */
     var gitDiff by mutableStateOf<Pair<String, String>?>(null)
     var gitCredHosts by mutableStateOf(listOf<String>())
+    var gitRemote by mutableStateOf<String?>(null)
     private val credentials = CredentialStore(
         File(app.filesDir, "git"),
         seal = { KeystoreManager.wrap(it) },
@@ -237,6 +238,95 @@ class IdeSession(
             val created = withContext(Dispatchers.IO) { ProjectStore.create(app, template, name) }
             show(created)
             status = "已新建 ${created.name}"
+        }
+    }
+
+    fun gitClone(url: String, name: String) {
+        if (url.isBlank()) {
+            status = "先填仓库地址"
+            return
+        }
+        flushBlocking()
+        gitBusy = true
+        status = "正在克隆，大仓库会慢一些…"
+        scope.launch {
+            val outcome = withContext(Dispatchers.IO) {
+                runCatching {
+                    val host = CredentialStore.normalizeHost(url.substringAfter("://", url))
+                    val provider = GitRepo.provider(credentials.get(host))
+                    ProjectStore.cloneProject(app, url.trim(), name, provider)
+                }
+            }
+            gitBusy = false
+            outcome.fold(
+                onSuccess = { created ->
+                    show(created)
+                    status = "已克隆 ${created.name}"
+                },
+                onFailure = { status = it.message ?: "克隆失败" },
+            )
+        }
+    }
+
+    fun gitSetRemote(url: String) {
+        val open = project ?: return
+        if (url.isBlank()) {
+            status = "先填仓库地址"
+            return
+        }
+        gitBusy = true
+        scope.launch {
+            val outcome = withContext(Dispatchers.IO) {
+                runCatching { GitRepo(open.srcDir).setRemote(url.trim()) }
+            }
+            gitBusy = false
+            outcome.fold(
+                onSuccess = {
+                    gitRemote = url.trim()
+                    status = "远程地址已设置"
+                },
+                onFailure = { status = it.message ?: "设置远程失败" },
+            )
+        }
+    }
+
+    fun gitPush() = gitRemoteOp("推送") { repo, provider -> repo.push(provider) }
+
+    fun gitPull() = gitRemoteOp("拉取") { repo, provider -> repo.pull(provider) }
+
+    private fun gitRemoteOp(label: String, op: (GitRepo, org.eclipse.jgit.transport.CredentialsProvider?) -> String) {
+        val open = project ?: return
+        flushBlocking()
+        gitBusy = true
+        status = "正在$label…"
+        scope.launch {
+            val outcome = withContext(Dispatchers.IO) {
+                runCatching {
+                    GitEnv.init(app.filesDir)
+                    val repo = GitRepo(open.srcDir)
+                    val url = repo.remoteUrl() ?: error("先设置远程地址")
+                    val host = CredentialStore.normalizeHost(url.substringAfter("://", url))
+                    op(repo, GitRepo.provider(credentials.get(host)))
+                }
+            }
+            gitBusy = false
+            outcome.fold(
+                onSuccess = { msg ->
+                    status = msg
+                    refreshGit()
+                    if (label == "拉取") {
+                        current?.let { file ->
+                            draft = readFile(file)
+                            saver.discardThrough(version)
+                            saver.noteDiskState(file)
+                            docEpoch += 1
+                        }
+                        reloadKey += 1
+                        scope.launch(Dispatchers.IO) { server.reload() }
+                    }
+                },
+                onFailure = { status = it.message ?: "$label 失败" },
+            )
         }
     }
 
@@ -414,6 +504,7 @@ class IdeSession(
         val open = project ?: run {
             gitReady = false
             gitChanges = emptyList()
+            gitRemote = null
             return
         }
         scope.launch {
@@ -421,15 +512,18 @@ class IdeSession(
                 runCatching {
                     GitEnv.init(app.filesDir)
                     val repo = GitRepo(open.srcDir)
-                    if (repo.exists()) Triple(true, repo.status(), repo.log())
-                    else Triple(false, emptyList(), emptyList())
+                    if (repo.exists()) listOf<Any?>(true, repo.status(), repo.log(), repo.remoteUrl())
+                    else listOf<Any?>(false, emptyList<GitRepo.Change>(), emptyList<GitRepo.CommitInfo>(), null)
                 }
             }
             outcome.fold(
-                onSuccess = { (ready, changes, commits) ->
-                    gitReady = ready
-                    gitChanges = changes
-                    gitLog = commits
+                onSuccess = { values ->
+                    gitReady = values[0] as Boolean
+                    @Suppress("UNCHECKED_CAST")
+                    gitChanges = values[1] as List<GitRepo.Change>
+                    @Suppress("UNCHECKED_CAST")
+                    gitLog = values[2] as List<GitRepo.CommitInfo>
+                    gitRemote = values[3] as String?
                 },
                 onFailure = { status = it.message ?: "读 Git 状态失败" },
             )

@@ -45,6 +45,7 @@ import dev.webviewide.project.Templates
 internal fun WelcomeScreen(
     onPickTemplate: (String) -> Unit,
     onCreateBlank: () -> Unit,
+    onClone: () -> Unit = {},
 ) {
     Column(
         Modifier
@@ -117,6 +118,10 @@ internal fun WelcomeScreen(
             OutlinedButton(onClick = { onPickTemplate("vue") }) { Text("Vue 待办") }
             Spacer(Modifier.size(8.dp))
             OutlinedButton(onClick = { onPickTemplate("react") }) { Text("React 待办") }
+        }
+        Spacer(Modifier.height(10.dp))
+        OutlinedButton(onClick = onClone, modifier = Modifier.fillMaxWidth()) {
+            Text("从 Git 克隆已有仓库")
         }
         Spacer(Modifier.height(18.dp))
         Text(

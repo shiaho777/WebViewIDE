@@ -54,6 +54,10 @@ internal fun GitSheet(
     onCredRefresh: () -> Unit,
     onCredSave: (String, String, String) -> Unit,
     onCredRemove: (String) -> Unit,
+    remote: String?,
+    onSetRemote: (String) -> Unit,
+    onPush: () -> Unit,
+    onPull: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     var message by remember { mutableStateOf("") }
@@ -61,6 +65,7 @@ internal fun GitSheet(
     var credHost by remember { mutableStateOf("gitee.com") }
     var credUser by remember { mutableStateOf("") }
     var credToken by remember { mutableStateOf("") }
+    var remoteInput by remember(remote) { mutableStateOf(remote ?: "") }
     LaunchedEffect(Unit) {
         onRefresh()
         onCredRefresh()
@@ -166,6 +171,30 @@ internal fun GitSheet(
                             }
                             HorizontalDivider()
                         }
+                    }
+                }
+            }
+            if (ready) {
+                HorizontalDivider(Modifier.padding(top = 8.dp))
+                Text("远程同步", style = MaterialTheme.typography.titleSmall)
+                OutlinedTextField(
+                    value = remoteInput,
+                    onValueChange = { remoteInput = it },
+                    label = { Text("远程地址（https://gitee.com/…）") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { onSetRemote(remoteInput) },
+                        enabled = !busy && remoteInput.isNotBlank(),
+                        modifier = Modifier.weight(1f),
+                    ) { Text("设置地址") }
+                    Button(onClick = onPush, enabled = !busy && remote != null, modifier = Modifier.weight(1f)) {
+                        Text("推送")
+                    }
+                    Button(onClick = onPull, enabled = !busy && remote != null, modifier = Modifier.weight(1f)) {
+                        Text("拉取")
                     }
                 }
             }
