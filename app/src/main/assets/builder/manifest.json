@@ -2,10 +2,10 @@
   "generator": "tools/builder/build.mjs",
   "sources": {
     "src/build/esbuild.ts": "2edd659c4fe737ccb6c8a4997d6ce9129d7332b674e02288288bff6c3427e628",
-    "src/build/typecheck.ts": "8012e259a70f808673154d49bd38318a3e58e7e6327a7bec5de58c26859cd3fa",
+    "src/build/typecheck.ts": "9812ad4690b0647c089a232c5e272c9e2d64a2076c18294219a06a8d098153c9",
     "src/build/vue.ts": "6f0cc5bc8eb6edcc1095566afe39cab66c3f6685437442756c54e8cdacd41466",
     "src/index.html": "49437f61c0ac5cf1e8e808960b4820f20295621850725c1bbbf2d24e60c63643",
-    "src/main.ts": "d838a623f35e6c1ee493ed37cab4704b02fdef727e2c677b6b9ab4dc08bde028",
+    "src/main.ts": "bae3bcb1badb739fb0ebdeeb2be472cb3ed3e713b2a4b659a9082e89e34fafff",
     "src/npm/install.ts": "0cdabb5c673cba785fec20fa03c88cac5cbee962e60f5a39ae04d652707fa834",
     "src/npm/memfs.ts": "b9374d3575b6ba2d50431d1a2683d293817d6e4ffe45dfb95dd32f7323d0642b",
     "src/npm/native.ts": "b4a4bcea1e240e0f427e004849d7758c821181cfab2f9bf343ccfb5cbc045c58",
@@ -15,6 +15,6 @@
   "buildScript": "beb2fe5a0156dc9cdc2f6edfdab65b73a9fc776576a786b430532fd00eaa8045",
   "packageJson": "d337101d1bbd8fe3d92912831980a8cff14c0346a56a381a875a79e6f3cfc3a5",
   "lockfile": "f7e35c8d6db53a3e6c12bdca48c340b76e71e70e02dcd0ade2c505f32682be4a",
-  "bundle": "9ce8f801b5517e5b72244b7c80f2954ede7dbea5367903988a7fbe9f69209f4a",
+  "bundle": "62d5efe2da9bcdd7fabc6f83a3a2d0f763d00870eaf5742b4db3f1f97db5a69a",
   "vueCompiler": "ac3d43b2bc33e5b361930fd45838b6f989a4d3e0998db4c861a217c5722b0871"
 }

@@ -116,8 +116,9 @@ async function runTypecheckCmd(id: number): Promise<void> {
     const bytes = await readSource(p);
     if (bytes) fs.write(p, bytes);
   }
-  log.progress(0.6, "tsc 类型检查（.ts/.tsx）");
+  log.progress(0.6, "tsc 类型检查（.ts/.tsx + ts SFC）");
   const result = await runTypecheck(fs, libsText, ts);
+  for (const n of result.notes) log.log("warn", n);
   for (const e of result.errors.slice(0, 100)) log.log("error", e);
   log.progress(1, "类型检查完成");
   post(
@@ -125,7 +126,7 @@ async function runTypecheckCmd(id: number): Promise<void> {
     {
       ok: result.ok,
       summary: result.checkedFiles === 0
-        ? "没有 .ts/.tsx 文件可检查"
+        ? "没有可检查的 TS 文件（.ts/.tsx 或 lang=ts 的 .vue）"
         : result.ok
           ? `类型检查通过（${result.checkedFiles} 个文件）`
           : `发现 ${result.errors.length} 个类型错误（不影响构建）`,

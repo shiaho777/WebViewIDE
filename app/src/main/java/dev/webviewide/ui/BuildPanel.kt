@@ -44,7 +44,7 @@ internal fun BuildPanel(
         ) {
             Text("NPM 构建", style = MaterialTheme.typography.titleLarge)
             Text(
-                if (hasPackageJson) "安装依赖后用 esbuild 打包到 dist，预览与打包自动使用产物。打包只转译；「类型检查」单独查 .ts/.tsx 的类型错误（.vue 内部暂不检查）。"
+                if (hasPackageJson) "安装依赖后用 esbuild 打包到 dist，预览与打包自动使用产物。打包只转译；「类型检查」单独查 .ts/.tsx 与 lang=ts 的 .vue（含模板表达式）的类型错误。"
                 else "当前项目没有 package.json。可先新建 npm-react 模板，或手动添加 package.json。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
