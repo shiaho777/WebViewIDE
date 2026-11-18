@@ -58,6 +58,13 @@ test("JS mode enables TypeScript + JSX so .ts/.tsx highlight", () => {
   assert.ok(/javascript\(\{ typescript: true, jsx: true \}\)/.test(source), "js kind must enable ts+jsx");
 });
 
+test("Emmet abbreviation tracker is mounted at highest precedence", () => {
+  assert.ok(/import \{ abbreviationTracker, emmetConfig, EmmetKnownSyntax \} from "@emmetio\/codemirror6-plugin"/.test(source), "must import emmet plugin");
+  assert.ok(/Prec\.highest\(abbreviationTracker\(\)\)/.test(source), "tracker must outrank indent/acceptCompletion Tab");
+  assert.ok(/emmetConf\.reconfigure\(emmetFor\(kind\)\)/.test(source), "setDoc must reconfigure emmet syntax");
+  assert.ok(/previewEnabled: false/.test(source), "floating preview must stay off for the calm phone UI");
+});
+
 test("vue kind uses lang-vue over an HTML base for SFC blocks", () => {
   assert.ok(/import \{ vue \} from "@codemirror\/lang-vue"/.test(source), "must import lang-vue");
   assert.ok(/case "vue":/.test(source), "must handle vue kind");
