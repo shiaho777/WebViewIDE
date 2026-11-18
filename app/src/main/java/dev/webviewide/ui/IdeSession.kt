@@ -22,6 +22,8 @@ import dev.webviewide.build.KeystoreException
 import dev.webviewide.build.KeystoreManager
 import dev.webviewide.build.Orientation
 import dev.webviewide.build.SignMode
+import dev.webviewide.git.GitEnv
+import dev.webviewide.git.GitRepo
 import dev.webviewide.project.DocumentImport
 import dev.webviewide.project.DraftJournal
 import dev.webviewide.project.DraftSaver
@@ -71,6 +73,9 @@ class IdeSession(
     var buildRunning by mutableStateOf(false)
     var signingKeys by mutableStateOf(listOf<KeystoreManager.StoredKey>())
     var projectExportRequested by mutableStateOf(false)
+    var gitReady by mutableStateOf(false)
+    var gitChanges by mutableStateOf(listOf<GitRepo.Change>())
+    var gitBusy by mutableStateOf(false)
 
     fun requestProjectExport() {
         projectExportRequested = true
@@ -392,6 +397,78 @@ class IdeSession(
         edit(text)
         docEpoch += 1
         status = "已回滚到历史版本"
+    }
+
+    /** Re-reads repo presence and working-tree changes for the Git panel. */
+    fun refreshGit() {
+        val open = project ?: run {
+            gitReady = false
+            gitChanges = emptyList()
+            return
+        }
+        scope.launch {
+            val outcome = withContext(Dispatchers.IO) {
+                runCatching {
+                    GitEnv.init(app.filesDir)
+                    val repo = GitRepo(open.srcDir)
+                    repo.exists() to if (repo.exists()) repo.status() else emptyList()
+                }
+            }
+            outcome.fold(
+                onSuccess = { (ready, changes) ->
+                    gitReady = ready
+                    gitChanges = changes
+                },
+                onFailure = { status = it.message ?: "读 Git 状态失败" },
+            )
+        }
+    }
+
+    fun gitInit() {
+        val open = project ?: return
+        gitBusy = true
+        scope.launch {
+            val outcome = withContext(Dispatchers.IO) {
+                runCatching {
+                    GitEnv.init(app.filesDir)
+                    GitRepo(open.srcDir).init()
+                }
+            }
+            gitBusy = false
+            outcome.fold(
+                onSuccess = {
+                    status = "Git 仓库已建好"
+                    refreshGit()
+                },
+                onFailure = { status = it.message ?: "Git 初始化失败" },
+            )
+        }
+    }
+
+    fun gitCommit(message: String) {
+        val open = project ?: return
+        if (message.isBlank()) {
+            status = "先写一句提交说明"
+            return
+        }
+        flushBlocking()
+        gitBusy = true
+        scope.launch {
+            val outcome = withContext(Dispatchers.IO) {
+                runCatching {
+                    GitEnv.init(app.filesDir)
+                    GitRepo(open.srcDir).commit(message.trim())
+                }
+            }
+            gitBusy = false
+            outcome.fold(
+                onSuccess = { hash ->
+                    status = "已提交 $hash"
+                    refreshGit()
+                },
+                onFailure = { status = it.message ?: "提交失败" },
+            )
+        }
     }
 
     fun runPreview() {
