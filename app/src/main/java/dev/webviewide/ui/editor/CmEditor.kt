@@ -291,6 +291,7 @@ private fun SymbolBar(kind: SourceKind, enabled: Boolean, onInsert: (String) -> 
         )
         val extra = when (kind) {
             SourceKind.HTML -> listOf("</", "/>", "!--", "div", "span", "class=", "style=")
+            SourceKind.VUE -> listOf("</", "/>", "{{", "}}", "@click", "v-if", "v-for", ":class", "ref(", "const ")
             SourceKind.CSS -> listOf("#", ".", "@media", "!important", "px", "rem", "%")
             SourceKind.JS -> listOf("=>", "===", "&&", "||", "const ", "let ", "function ", "return ", "`")
             SourceKind.JSON -> listOf(",", "true", "false", "null")

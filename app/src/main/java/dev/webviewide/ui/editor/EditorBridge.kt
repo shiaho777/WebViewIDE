@@ -22,6 +22,7 @@ import dev.webviewide.project.string
 object EditorBridge {
     fun kindKey(kind: SourceKind): String = when (kind) {
         SourceKind.HTML -> "html"
+        SourceKind.VUE -> "vue"
         SourceKind.CSS -> "css"
         SourceKind.JS -> "js"
         SourceKind.JSON -> "json"

@@ -58,6 +58,12 @@ test("JS mode enables TypeScript + JSX so .ts/.tsx highlight", () => {
   assert.ok(/javascript\(\{ typescript: true, jsx: true \}\)/.test(source), "js kind must enable ts+jsx");
 });
 
+test("vue kind uses lang-vue over an HTML base for SFC blocks", () => {
+  assert.ok(/import \{ vue \} from "@codemirror\/lang-vue"/.test(source), "must import lang-vue");
+  assert.ok(/case "vue":/.test(source), "must handle vue kind");
+  assert.ok(/vue\(\{ base: html\(\) \}\)/.test(source), "vue must layer on html base (script/style nesting)");
+});
+
 test("match highlighting is provided without the built-in panel", () => {
   assert.ok(source.includes("getSearchQuery"), "must read the active query");
   assert.ok(source.includes("cm-searchMatch"), "must decorate matches");

@@ -42,6 +42,7 @@ import {
   syntaxHighlighting,
 } from "@codemirror/language";
 import { html } from "@codemirror/lang-html";
+import { vue } from "@codemirror/lang-vue";
 import { css } from "@codemirror/lang-css";
 import { javascript } from "@codemirror/lang-javascript";
 import { json } from "@codemirror/lang-json";
@@ -79,6 +80,10 @@ function languageFor(kind: string) {
   switch (kind) {
     case "html":
       return html();
+    case "vue":
+      // SFC: template=HTML(+Vue interp/directives), <script lang=ts>=TS,
+      // <style>=CSS via the HTML base's nested parsers.
+      return vue({ base: html() });
     case "css":
       return css();
     case "js":
