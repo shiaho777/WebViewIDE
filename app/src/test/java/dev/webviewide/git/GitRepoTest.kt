@@ -71,6 +71,41 @@ class GitRepoTest {
         }
     }
 
+    @Test fun logDiffRestoreRoundTrip() {
+        val src = createTempDirectory("git-hist").toFile()
+        try {
+            val repo = GitRepo(src)
+            repo.init()
+            assertTrue(repo.log().isEmpty()) // no commits yet
+            File(src, "a.txt").writeText("v1\n")
+            val h1 = repo.commit("one")
+            File(src, "a.txt").writeText("v2\n")
+            val h2 = repo.commit("two")
+
+            val log = repo.log()
+            assertEquals(listOf(h2, h1), log.map { it.hash })
+            assertEquals("two", log.first().message)
+            assertTrue(log.first().time > 0)
+
+            File(src, "a.txt").writeText("v3\n")
+            val diff = repo.diff("a.txt")
+            assertTrue(diff.contains("-v2"))
+            assertTrue(diff.contains("+v3"))
+            // Untracked file renders as all-added.
+            File(src, "new.txt").writeText("hello\n")
+            assertTrue(repo.diff("new.txt").contains("+hello"))
+            assertEquals("", repo.diff("missing.txt"))
+
+            repo.restore("a.txt")
+            assertEquals("v2\n", File(src, "a.txt").readText())
+            assertTrue(repo.status().none { it.path == "a.txt" })
+            // Restore leaves other files alone.
+            assertEquals("hello\n", File(src, "new.txt").readText())
+        } finally {
+            src.deleteRecursively()
+        }
+    }
+
     @Test fun sessionWiresGitOnIoWithFlush() {
         val session = File("src/main/java/dev/webviewide/ui/IdeSession.kt").readText()
         assertTrue(session.contains("fun gitInit()"))
@@ -87,8 +122,23 @@ class GitRepoTest {
         val screen = File("src/main/java/dev/webviewide/ui/IdeScreen.kt").readText()
         assertTrue(screen.contains("Panel.GIT -> GitSheet("))
         assertTrue(screen.contains("panel = Panel.GIT"))
+        // Same-key AnimatedContent swaps stack old+new editor and blank the
+        // fresh WebView; docEpoch must participate in the contentKey.
+        assertTrue(screen.contains("contentKey = { it?.path + \"#\" + session.docEpoch }"))
         val sheet = File("src/main/java/dev/webviewide/ui/GitSheet.kt").readText()
         assertTrue(sheet.contains("初始化仓库"))
         assertTrue(sheet.contains("提交说明"))
+        assertTrue(sheet.contains("提交历史"))
+        assertTrue(sheet.contains("恢复这个文件？"))
+    }
+
+    @Test fun restoreRemountsEditorAndReloadsPreview() {
+        val session = File("src/main/java/dev/webviewide/ui/IdeSession.kt").readText()
+        val body = session.substringAfter("fun gitRestore(path: String)").substringBefore("fun runPreview")
+        assertTrue(body.contains("flushBlocking()"))
+        assertTrue(body.contains("docEpoch += 1"))
+        assertTrue(body.contains("saver.discardThrough(version)"))
+        assertTrue(body.contains("server.reload"))
+        assertTrue(session.contains("fun showGitDiff(path: String)"))
     }
 }

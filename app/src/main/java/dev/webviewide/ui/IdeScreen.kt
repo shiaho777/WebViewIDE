@@ -406,7 +406,10 @@ fun IdeScreen() {
                                     AnimatedContent(
                                         modifier = Modifier.weight(1f),
                                         targetState = session.current,
-                                        contentKey = { it?.path },
+                                        // docEpoch must change the contentKey too: same-key content
+                                        // swaps stack old+new editor in one slot and the fresh WebView
+                                        // measures 0x0 (blank editor after rollback/restore).
+                                        contentKey = { it?.path + "#" + session.docEpoch },
                                         transitionSpec = {
                                             (
                                                 fadeIn(animationSpec = AppMotion.effects()) +
@@ -516,10 +519,15 @@ fun IdeScreen() {
         Panel.GIT -> GitSheet(
             ready = session.gitReady,
             changes = session.gitChanges,
+            commits = session.gitLog,
             busy = session.gitBusy,
+            diff = session.gitDiff,
             onInit = session::gitInit,
             onRefresh = session::refreshGit,
             onCommit = session::gitCommit,
+            onDiff = session::showGitDiff,
+            onDiffClose = { session.gitDiff = null },
+            onRestore = session::gitRestore,
             onDismiss = { panel = null },
         )
         Panel.PACKAGE -> project?.let { open ->

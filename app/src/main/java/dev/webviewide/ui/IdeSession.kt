@@ -76,6 +76,9 @@ class IdeSession(
     var gitReady by mutableStateOf(false)
     var gitChanges by mutableStateOf(listOf<GitRepo.Change>())
     var gitBusy by mutableStateOf(false)
+    var gitLog by mutableStateOf(listOf<GitRepo.CommitInfo>())
+    /** path to unified diff text while the diff viewer is open. */
+    var gitDiff by mutableStateOf<Pair<String, String>?>(null)
 
     fun requestProjectExport() {
         projectExportRequested = true
@@ -411,15 +414,69 @@ class IdeSession(
                 runCatching {
                     GitEnv.init(app.filesDir)
                     val repo = GitRepo(open.srcDir)
-                    repo.exists() to if (repo.exists()) repo.status() else emptyList()
+                    if (repo.exists()) Triple(true, repo.status(), repo.log())
+                    else Triple(false, emptyList(), emptyList())
                 }
             }
             outcome.fold(
-                onSuccess = { (ready, changes) ->
+                onSuccess = { (ready, changes, commits) ->
                     gitReady = ready
                     gitChanges = changes
+                    gitLog = commits
                 },
                 onFailure = { status = it.message ?: "读 Git 状态失败" },
+            )
+        }
+    }
+
+    /** Opens the diff viewer for one changed path. */
+    fun showGitDiff(path: String) {
+        val open = project ?: return
+        scope.launch {
+            val outcome = withContext(Dispatchers.IO) {
+                runCatching {
+                    GitEnv.init(app.filesDir)
+                    GitRepo(open.srcDir).diff(path)
+                }
+            }
+            outcome.fold(
+                onSuccess = { gitDiff = path to it.ifBlank { "这个文件没有可显示的差异" } },
+                onFailure = { status = it.message ?: "读差异失败" },
+            )
+        }
+    }
+
+    /** Restores one file to HEAD, remounts the editor and hot-reloads the preview. */
+    fun gitRestore(path: String) {
+        val open = project ?: return
+        val target = File(open.srcDir, path)
+        if (current == target) flushBlocking()
+        gitBusy = true
+        scope.launch {
+            val outcome = withContext(Dispatchers.IO) {
+                runCatching {
+                    GitEnv.init(app.filesDir)
+                    GitRepo(open.srcDir).restore(path)
+                }
+            }
+            gitBusy = false
+            outcome.fold(
+                onSuccess = {
+                    if (current == target) {
+                        draft = readFile(target)
+                        saver.discardThrough(version)
+                        saver.noteDiskState(target)
+                        docEpoch += 1
+                        if (open.liveReload) {
+                            val rel = runCatching { target.toRelativeString(open.serveDir).replace(File.separatorChar, '/') }
+                                .getOrDefault("")
+                            scope.launch(Dispatchers.IO) { server.reload(rel, full = true) }
+                        }
+                    }
+                    status = "已恢复 $path 到最近一次提交"
+                    refreshGit()
+                },
+                onFailure = { status = it.message ?: "恢复失败" },
             )
         }
     }
