@@ -105,6 +105,20 @@ class TemplatesTest {
         assertTrue(Templates.isKnown("npm-react"))
     }
 
+    @Test fun npmVueTemplateIsABuildableSfcProject() {
+        val dir = File(root, "npm-vue")
+        val pkg = File(dir, "package.json").readText()
+        assertTrue(pkg.contains("\"vue\""))
+        // Runtime pinned to the same version as the bundled compiler-sfc.
+        assertTrue(pkg.contains("3.5.45"))
+        assertTrue(File(dir, "src/main.ts").isFile)
+        assertTrue(File(dir, "src/main.ts").readText().contains("createApp"))
+        val sfc = File(dir, "src/App.vue").readText()
+        assertTrue(sfc.contains("<script setup lang=\"ts\">"))
+        assertTrue(sfc.contains("<style scoped>"))
+        assertTrue(Templates.isKnown("npm-vue"))
+    }
+
     @Test fun lookupHelpersBehave() {
         assertTrue(Templates.isKnown("portfolio"))
         assertFalse(Templates.isKnown("does-not-exist"))

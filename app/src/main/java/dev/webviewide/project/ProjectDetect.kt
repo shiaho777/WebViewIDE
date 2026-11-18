@@ -74,8 +74,8 @@ object ProjectDetect {
     }
 
     fun sourceSummary(kind: String): String = when (kind) {
-        ProjectKinds.VUE -> "这是 Vue 源码，还没有构建结果。在电脑上构建后，把 dist 一起导入。"
-        ProjectKinds.REACT -> "这是 React 源码，还没有构建结果。在电脑上构建后，把 build 或 dist 一起导入。"
+        ProjectKinds.VUE -> "这是 Vue 源码。点「NPM 构建」安装依赖并打包到 dist，即可预览。"
+        ProjectKinds.REACT -> "这是 React 源码。点「NPM 构建」安装依赖并打包到 dist，即可预览。"
         ProjectKinds.NEXT -> "这是 Next 源码。导出静态站点后，把 out 一起导入。"
         ProjectKinds.NUXT -> "这是 Nuxt 源码。生成静态站点后，把 .output/public 一起导入。"
         ProjectKinds.ANGULAR -> "这是 Angular 源码，还没有构建结果。构建后把 dist 一起导入。"

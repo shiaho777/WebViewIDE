@@ -1,0 +1,12 @@
+{
+  "name": "npm-vue-app",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/main.ts --bundle --minify --outfile=dist/main.js"
+  },
+  "dependencies": {
+    "vue": "3.5.45"
+  }
+}
