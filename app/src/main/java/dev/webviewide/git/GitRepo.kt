@@ -3,9 +3,12 @@ package dev.webviewide.git
 import java.io.ByteArrayOutputStream
 import java.io.File
 import org.eclipse.jgit.api.Git
+import org.eclipse.jgit.api.MergeResult
 import org.eclipse.jgit.diff.DiffFormatter
 import org.eclipse.jgit.lib.Repository
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder
+import org.eclipse.jgit.transport.CredentialsProvider
+import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider
 import org.eclipse.jgit.treewalk.CanonicalTreeParser
 import org.eclipse.jgit.treewalk.FileTreeIterator
 
@@ -83,6 +86,59 @@ class GitRepo(private val src: File) {
     fun restore(path: String) {
         use { git ->
             git.checkout().addPath(path).setStartPoint("HEAD").call()
+        }
+    }
+
+    /** The origin URL, or null when no remote is configured. */
+    fun remoteUrl(): String? = use { git ->
+        git.repository.config.getString("remote", "origin", "url")?.takeIf { it.isNotBlank() }
+    }
+
+    /** Points origin at [url] (creates the remote section when missing). */
+    fun setRemote(url: String) {
+        use { git ->
+            val config = git.repository.config
+            config.setString("remote", "origin", "url", url)
+            config.setString("remote", "origin", "fetch", "+refs/heads/*:refs/remotes/origin/*")
+            config.save()
+        }
+    }
+
+    /** Pushes the current branch to origin. */
+    fun push(provider: CredentialsProvider?): String = use { git ->
+        val branch = git.repository.branch
+        val cmd = git.push().setRemote("origin").add(branch)
+        if (provider != null) cmd.setCredentialsProvider(provider)
+        val results = cmd.call()
+        val rejected = results.flatMap { it.remoteUpdates }
+            .filter { it.status.name.startsWith("REJECTED") }
+        if (rejected.isNotEmpty()) {
+            error("推送被拒绝：${rejected.first().message ?: "远端有更新的提交，先拉取"}")
+        }
+        "已推送 $branch 到远端"
+    }
+
+    /** Fast-forward-only pull; diverged histories report a clear error. */
+    fun pull(provider: CredentialsProvider?): String = use { git ->
+        val cmd = git.pull().setRemote("origin").setRemoteBranchName(git.repository.branch)
+            .setFastForward(org.eclipse.jgit.api.MergeCommand.FastForwardMode.FF_ONLY)
+        if (provider != null) cmd.setCredentialsProvider(provider)
+        val result = cmd.call()
+        if (!result.isSuccessful) {
+            error("拉取失败：本地与远端有分叉或冲突，先提交本地改动再处理")
+        }
+        "已拉取远端更新"
+    }
+
+    companion object {
+        fun provider(cred: CredentialStore.Credential?): CredentialsProvider? =
+            cred?.let { UsernamePasswordCredentialsProvider(it.user, it.token) }
+
+        /** Clones [url] into [dest] (which must not exist yet). */
+        fun clone(url: String, dest: File, provider: CredentialsProvider?) {
+            val cmd = Git.cloneRepository().setURI(url).setDirectory(dest)
+            if (provider != null) cmd.setCredentialsProvider(provider)
+            cmd.call().use { git -> GitEnv.tune(git.repository) }
         }
     }
 }

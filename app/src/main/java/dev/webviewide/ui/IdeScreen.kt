@@ -374,6 +374,7 @@ fun IdeScreen() {
                         WelcomeScreen(
                             onPickTemplate = { id -> session.create(id, Templates.byId(id)?.name ?: "未命名") },
                             onCreateBlank = { session.create("blank", "我的网页") },
+                            onClone = { panel = Panel.PROJECTS },
                         )
                     }
                     return@Crossfade
@@ -532,6 +533,10 @@ fun IdeScreen() {
             onCredRefresh = session::refreshGitCreds,
             onCredSave = session::saveGitCred,
             onCredRemove = session::removeGitCred,
+            remote = session.gitRemote,
+            onSetRemote = session::gitSetRemote,
+            onPush = session::gitPush,
+            onPull = session::gitPull,
             onDismiss = { panel = null },
         )
         Panel.PACKAGE -> project?.let { open ->

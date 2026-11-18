@@ -2,7 +2,10 @@ package dev.webviewide.project
 
 import android.content.Context
 import android.content.res.AssetManager
+import dev.webviewide.git.GitEnv
+import dev.webviewide.git.GitRepo
 import java.io.File
+import org.eclipse.jgit.transport.CredentialsProvider
 
 data class WebProject(
     val id: String,
@@ -98,6 +101,31 @@ object ProjectStore {
         var project = WebProject(
             id = id,
             name = name.ifBlank { "未命名" },
+            dir = dir,
+            packageName = "dev.webviewide.${ProjectIds.packageSegment(id)}",
+        )
+        project = project.applyDetection(ProjectDetect.detect(src))
+        save(project)
+        remember(context, id)
+        return project
+    }
+
+    /** Creates a project by cloning [url] into its src/; cleans up on failure. */
+    fun cloneProject(context: Context, url: String, name: String, provider: CredentialsProvider?): WebProject {
+        val root = root(context)
+        val id = ProjectIds.freshId(root.list()?.toSet().orEmpty(), name)
+        val dir = File(root, id)
+        val src = File(dir, "src")
+        try {
+            GitEnv.init(context.filesDir)
+            GitRepo.clone(url, src, provider)
+        } catch (e: Exception) {
+            dir.deleteRecursively()
+            throw e
+        }
+        var project = WebProject(
+            id = id,
+            name = name.ifBlank { "克隆的项目" },
             dir = dir,
             packageName = "dev.webviewide.${ProjectIds.packageSegment(id)}",
         )

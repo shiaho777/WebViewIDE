@@ -391,6 +391,8 @@ internal fun ProjectSheet(
     var newName by remember { mutableStateOf("") }
     var template by remember { mutableStateOf("blank") }
     var confirmDelete by remember { mutableStateOf(false) }
+    var cloneUrl by remember { mutableStateOf("") }
+    var cloneName by remember { mutableStateOf("") }
     val projects = remember(current?.id, current?.name, session.treeTick) { session.projects() }
     ModalBottomSheet(onDismissRequest = onDismiss) {
         // The template list plus the current-project actions are taller than a
@@ -445,6 +447,52 @@ internal fun ProjectSheet(
                         Spacer(Modifier.width(ButtonDefaults.IconSpacing))
                         Text("新建")
                     }
+                }
+            }
+            Surface(
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                shape = MaterialTheme.shapes.large,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            ) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        "从 Git 克隆",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    OutlinedTextField(
+                        value = cloneUrl,
+                        onValueChange = { cloneUrl = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        shape = MaterialTheme.shapes.medium,
+                        label = { Text("仓库地址（https://gitee.com/…）") },
+                    )
+                    OutlinedTextField(
+                        value = cloneName,
+                        onValueChange = { cloneName = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        shape = MaterialTheme.shapes.medium,
+                        label = { Text("项目名字（可留空）") },
+                    )
+                    Button(
+                        onClick = {
+                            session.gitClone(cloneUrl, cloneName.ifBlank { "克隆的项目" })
+                            cloneUrl = ""
+                            cloneName = ""
+                            onDismiss()
+                        },
+                        enabled = cloneUrl.isNotBlank() && !session.gitBusy,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(if (session.gitBusy) "正在克隆…" else "克隆")
+                    }
+                    Text(
+                        "私有仓库需要先在 Git 面板保存对应站点的凭据。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
             Row(
