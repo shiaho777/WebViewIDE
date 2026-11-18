@@ -46,6 +46,7 @@ fun BuildHost(
                 is BuildEvent.Log -> session.appendBuildLog(ev.text)
                 is BuildEvent.Progress -> session.setBuildProgress(ev.fraction, ev.label)
                 is BuildEvent.Done -> session.onBuildFinished(ev.ok, ev.summary)
+                is BuildEvent.TcDone -> session.onTypecheckFinished(ev.ok, ev.summary)
                 is BuildEvent.Error -> session.appendBuildLog("错误：${ev.message}")
                 else -> {}
             }

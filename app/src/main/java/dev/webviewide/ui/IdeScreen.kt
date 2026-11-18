@@ -506,6 +506,7 @@ fun IdeScreen() {
             hasPackageJson = project?.srcDir?.let { java.io.File(it, "package.json").isFile } ?: false,
             onRunning = { session.buildRunning = true },
             onStartBuild = { buildCtl.startBuild(2) },
+            onStartTypecheck = { buildCtl.startTypecheck(3) },
             onDismiss = { panel = null },
         )
         Panel.HISTORY -> HistorySheet(

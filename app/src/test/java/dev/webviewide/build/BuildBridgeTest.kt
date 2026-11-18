@@ -17,6 +17,13 @@ class BuildBridgeTest {
         assertEquals("install", root.string("type"))
         assertEquals("build", parseJson(BuildBridge.build(8)).jsonObject().string("type"))
         assertEquals("cancel", parseJson(BuildBridge.cancel(9)).jsonObject().string("type"))
+        assertEquals("typecheck", parseJson(BuildBridge.typecheck(3)).jsonObject().string("type"))
+        assertEquals("tsUrl", parseJson(BuildBridge.tsUrl(3, "https://x/")).jsonObject().string("type"))
+    }
+
+    @Test fun typecheckDoneParsesSeparatelyFromBuildDone() {
+        val tc = BuildEvents.parse("""{"id":3,"type":"tcdone","payload":{"ok":false,"summary":"2 errors"}}""")?.second
+        assertEquals(BuildEvent.TcDone(false, "2 errors"), tc)
     }
 
     @Test fun netResponseCarriesBodyAndDigest() {

@@ -4,6 +4,7 @@ import { install, type NetClient } from "./npm/install";
 import { MemFs } from "./npm/memfs";
 import { ensureEsbuild, buildProject } from "./build/esbuild";
 import { ensureVueCompiler } from "./build/vue";
+import { ensureTypeScript, runTypecheck } from "./build/typecheck";
 
 declare global {
   interface Window {
@@ -97,6 +98,41 @@ function writeDist(path: string, bytes: Uint8Array): Promise<boolean> {
 }
 
 let wasmUrl = "";
+let tsBase = "";
+
+async function runTypecheckCmd(id: number): Promise<void> {
+  for (let i = 0; i < 600 && !tsBase; i++) await new Promise((r) => setTimeout(r, 100));
+  if (!tsBase) {
+    post("tcdone", { ok: false, summary: "TypeScript 未就绪" }, id);
+    return;
+  }
+  log.progress(0.2, "加载类型检查器");
+  const ts = await ensureTypeScript(tsBase);
+  const libsText = await (await fetch(tsBase.replace(/\/?$/, "/") + "libs.d.ts")).text();
+  log.progress(0.4, "读取源文件");
+  const paths = await listSource();
+  for (const p of paths) {
+    if (p.startsWith("dist/")) continue;
+    const bytes = await readSource(p);
+    if (bytes) fs.write(p, bytes);
+  }
+  log.progress(0.6, "tsc 类型检查（.ts/.tsx）");
+  const result = await runTypecheck(fs, libsText, ts);
+  for (const e of result.errors.slice(0, 100)) log.log("error", e);
+  log.progress(1, "类型检查完成");
+  post(
+    "tcdone",
+    {
+      ok: result.ok,
+      summary: result.checkedFiles === 0
+        ? "没有 .ts/.tsx 文件可检查"
+        : result.ok
+          ? `类型检查通过（${result.checkedFiles} 个文件）`
+          : `发现 ${result.errors.length} 个类型错误（不影响构建）`,
+    },
+    id,
+  );
+}
 
 const net: NetClient = {
   fetch(url: string, integrity?: string): Promise<Uint8Array> {
@@ -215,6 +251,15 @@ function handle(msg: Msg): void {
       break;
     case "wasmUrl":
       wasmUrl = String(p.url ?? "");
+      break;
+    case "tsUrl":
+      tsBase = String(p.url ?? "");
+      break;
+    case "typecheck":
+      void runTypecheckCmd(id).catch((e) => {
+        post("error", { message: String(e) }, id);
+        post("tcdone", { ok: false, summary: String(e) }, id);
+      });
       break;
     case "cancel":
       post("done", { ok: false, summary: "cancelled" }, id);

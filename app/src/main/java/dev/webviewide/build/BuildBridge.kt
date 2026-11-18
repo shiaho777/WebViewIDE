@@ -22,6 +22,7 @@ object BuildBridge {
     // ---- down: commands ----
     fun install(id: Long): String = message(id, "install", emptyMap())
     fun build(id: Long): String = message(id, "build", emptyMap())
+    fun typecheck(id: Long): String = message(id, "typecheck", emptyMap())
     fun cancel(id: Long): String = message(id, "cancel", emptyMap())
 
     /** Response to an up "net" request. [bodyB64] empty on failure with [status]. */
@@ -38,6 +39,9 @@ object BuildBridge {
 
     /** Local URL of the cached esbuild wasm, pushed before a build. */
     fun wasmUrl(id: Long, url: String): String = message(id, "wasmUrl", mapOf("url" to url))
+
+    /** https base URL of the cached TypeScript compiler + libs, before a typecheck. */
+    fun tsUrl(id: Long, url: String): String = message(id, "tsUrl", mapOf("url" to url))
 
     /** Response to an up "readSource": file content as base64. */
     fun readSourceResponse(id: Long, b64: String, exists: Boolean): String =
@@ -68,6 +72,7 @@ sealed interface BuildEvent {
     data object ListSource : BuildEvent
     data class WriteDist(val path: String, val b64: String) : BuildEvent
     data class Done(val ok: Boolean, val summary: String) : BuildEvent
+    data class TcDone(val ok: Boolean, val summary: String) : BuildEvent
     data class Error(val message: String) : BuildEvent
 }
 
@@ -95,6 +100,7 @@ object BuildEvents {
             "listSource" -> BuildEvent.ListSource
             "writeDist" -> BuildEvent.WriteDist(p.string("path"), p.string("b64"))
             "done" -> BuildEvent.Done(p["ok"] as? Boolean ?: false, p.string("summary"))
+            "tcdone" -> BuildEvent.TcDone(p["ok"] as? Boolean ?: false, p.string("summary"))
             "error" -> BuildEvent.Error(p.string("message"))
             else -> return null
         }
