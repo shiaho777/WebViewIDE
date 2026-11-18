@@ -7,7 +7,8 @@
 //                              replaceAll | insert | theme | focus
 // Up (JS -> Kotlin): window.WviBridge.post(json)
 //   {id?, type, payload} type: ready | change | cursor | findResult
-import { EditorState, Compartment } from "@codemirror/state";
+import { EditorState, Compartment, Prec } from "@codemirror/state";
+import { abbreviationTracker, emmetConfig, EmmetKnownSyntax } from "@emmetio/codemirror6-plugin";
 import {
   EditorView,
   keymap,
@@ -75,6 +76,7 @@ const WRAP_MIN_WIDTH = 420;
 const languageConf = new Compartment();
 const themeConf = new Compartment();
 const wrapConf = new Compartment();
+const emmetConf = new Compartment();
 
 function languageFor(kind: string) {
   switch (kind) {
@@ -94,6 +96,15 @@ function languageFor(kind: string) {
     default:
       return [];
   }
+}
+
+// Emmet expands markup/CSS abbreviations on Tab; disable the floating preview
+// to keep the phone editor calm. JS/JSON get no useful markup syntax.
+function emmetFor(kind: string) {
+  const syntax =
+    kind === "css" ? EmmetKnownSyntax.css : kind === "vue" ? EmmetKnownSyntax.vue : kind === "html" ? EmmetKnownSyntax.html : null;
+  if (!syntax) return emmetConfig.of({ mark: false, previewEnabled: false });
+  return emmetConfig.of({ syntax, mark: true, previewEnabled: false, markTagPairs: false, autoRenameTags: false });
 }
 
 interface Palette {
@@ -227,6 +238,10 @@ const view = new EditorView({
       searchHighlight,
       indentUnit.of("  "),
       EditorState.tabSize.of(2),
+      // Highest precedence so Emmet's Tab expands a tracked abbreviation before
+      // acceptCompletion/indentWithTab; returns false otherwise (indent intact).
+      Prec.highest(abbreviationTracker()),
+      emmetConf.of(emmetFor("plain")),
       wrapConf.of(window.innerWidth >= WRAP_MIN_WIDTH ? EditorView.lineWrapping : []),
       keymap.of([
         // On soft keyboards Tab must be acceptable as completion too.
@@ -275,7 +290,7 @@ function setDoc(text: string, kind: string): void {
   view.dispatch({
     changes: { from: 0, to: view.state.doc.length, insert: text },
     selection: { anchor: 0 },
-    effects: languageConf.reconfigure(languageFor(kind)),
+    effects: [languageConf.reconfigure(languageFor(kind)), emmetConf.reconfigure(emmetFor(kind))],
     scrollIntoView: false,
   });
   view.dispatch({ effects: EditorView.scrollIntoView(0) });
