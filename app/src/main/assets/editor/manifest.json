@@ -2,10 +2,10 @@
   "generator": "tools/editor/build.mjs",
   "sources": {
     "src/index.html": "e0cf3a06144bab75ab0124d6c7dba46af5c8f1fae1b26d3b38b03849ba7048ba",
-    "src/main.ts": "8abe59fb4fa33e39f8f909255a8a206e9e7acdd8709a35170d9be6ee06083668"
+    "src/main.ts": "9dfa126bf3f11e3ad5802006a5c0034036089f5e84fbfdd890cdf8d4641e76e0"
   },
   "buildScript": "f104e31e3dded03650f44bd5154161bc2e62636d4cd9e2a9b72db337254302e1",
   "packageJson": "db809355a9a448a28eee93a90902d35dee183112e722abe173d9fd8db7ccae39",
   "lockfile": "7bb3df5eeae06caf0089026cebeb21b97869c2ad43d249a1243b3e4d5becde31",
-  "bundle": "b5cac49a49d57f2baae5947264a2e97102561031534a9c0b1f9629a139f6f257"
+  "bundle": "da3f8f2f00cf4133250ae437bec99dadace8dd5581e51225f4e507ac2fcb36e4"
 }
