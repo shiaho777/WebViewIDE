@@ -1,9 +1,13 @@
 package dev.webviewide.git
 
+import java.io.ByteArrayOutputStream
 import java.io.File
 import org.eclipse.jgit.api.Git
+import org.eclipse.jgit.diff.DiffFormatter
 import org.eclipse.jgit.lib.Repository
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder
+import org.eclipse.jgit.treewalk.CanonicalTreeParser
+import org.eclipse.jgit.treewalk.FileTreeIterator
 
 /** One project's repository; the work tree is the project's src/ directory. */
 class GitRepo(private val src: File) {
@@ -47,5 +51,38 @@ class GitRepo(private val src: File) {
         git.add().addFilepattern(".").setUpdate(true).call()
         val id = git.commit().setMessage(message).call()
         id.name.take(7)
+    }
+
+    data class CommitInfo(val hash: String, val message: String, val time: Long)
+
+    /** Newest-first commit list; empty when the repo has no commits yet. */
+    fun log(limit: Int = 50): List<CommitInfo> = use { git ->
+        if (git.repository.resolve("HEAD") == null) return@use emptyList()
+        git.log().setMaxCount(limit).call().map {
+            CommitInfo(it.name.take(7), it.shortMessage, it.commitTime * 1000L)
+        }
+    }
+
+    /** Working tree vs HEAD for one path; untracked files render as all-added. */
+    fun diff(path: String): String = use { git ->
+        val out = ByteArrayOutputStream()
+        DiffFormatter(out).use { fmt ->
+            fmt.setRepository(git.repository)
+            val head = git.repository.resolve("HEAD^{tree}")
+            val old = if (head == null) org.eclipse.jgit.treewalk.EmptyTreeIterator()
+            else git.repository.newObjectReader().use { CanonicalTreeParser().apply { reset(it, head) } }
+            val entries = fmt.scan(old, FileTreeIterator(git.repository))
+            val entry = entries.firstOrNull { it.newPath == path || it.oldPath == path }
+                ?: return@use ""
+            fmt.format(entry)
+        }
+        out.toString(Charsets.UTF_8.name())
+    }
+
+    /** Restores one file to its HEAD content (discards working-tree edits). */
+    fun restore(path: String) {
+        use { git ->
+            git.checkout().addPath(path).setStartPoint("HEAD").call()
+        }
     }
 }
