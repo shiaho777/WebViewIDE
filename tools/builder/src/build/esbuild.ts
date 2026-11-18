@@ -2,6 +2,7 @@
 // project from an in-memory fs (sources + node_modules loaded via the bridge).
 import * as esbuild from "esbuild-wasm";
 import { MemFs } from "../npm/memfs";
+import { compileSfc } from "./vue";
 
 let initialized = false;
 
@@ -45,7 +46,7 @@ function resolveInFs(fs: MemFs, importer: string, spec: string): string | null {
   if (spec.startsWith(".") || spec.startsWith("/")) {
     const base = spec.startsWith("/") ? "" : importer.split("/").slice(0, -1).join("/");
     const target = spec.startsWith("/") ? spec.slice(1) : join(base, spec);
-    candidates.push(target, target + ".js", target + ".jsx", target + ".ts", target + ".tsx", target + ".json", target + "/index.js");
+    candidates.push(target, target + ".js", target + ".jsx", target + ".ts", target + ".tsx", target + ".vue", target + ".json", target + "/index.js");
   } else {
     const pkgRoot = "node_modules/" + spec;
     const pkgJson = fs.readText(pkgRoot + "/package.json");
@@ -76,9 +77,17 @@ function memfsPlugin(fs: MemFs): esbuild.Plugin {
         if (resolved) return { path: resolved, namespace: "wvi" };
         return { path: args.path, namespace: "wvi" };
       });
-      build.onLoad({ filter: /.*/, namespace: "wvi" }, (args) => {
+      build.onLoad({ filter: /.*/, namespace: "wvi" }, async (args) => {
         const data = fs.read(args.path);
         if (!data) return { errors: [{ text: "找不到模块 " + args.path }] };
+        if (args.path.endsWith(".vue")) {
+          try {
+            const sfc = await compileSfc(new TextDecoder().decode(data), args.path);
+            return { contents: sfc.code, loader: sfc.loader };
+          } catch (e) {
+            return { errors: [{ text: String((e as Error)?.message ?? e) }] };
+          }
+        }
         return { contents: data, loader: loaderFor(args.path) };
       });
     },
@@ -100,6 +109,13 @@ export async function buildProject(fs: MemFs, entry: string): Promise<BuildOutpu
     format: "iife",
     target: ["chrome90"],
     plugins: [memfsPlugin(fs)],
+    // Vue esm-bundler build expects these flags; harmless for non-Vue projects.
+    define: {
+      "process.env.NODE_ENV": '"production"',
+      __VUE_OPTIONS_API__: "true",
+      __VUE_PROD_DEVTOOLS__: "false",
+      __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: "false",
+    },
     logLevel: "silent",
   });
   return (result.outputFiles ?? []).map((f) => ({

@@ -1,8 +1,8 @@
 {
   "generator": "tools/builder/build.mjs",
   "sources": {
-    "src/build/esbuild.ts": "5055cf2a68e9c3830df0b36c8f9c0b0106dc75b5a1c7ecde6ac872a980288dc2",
-    "src/build/vue.ts": "3dc74bc47433aa76036693ee7c9e668dd167638a843e518a74e1a869d748565b",
+    "src/build/esbuild.ts": "b260f1c69fac5630b65064489d1ea663a4625e7ae0acf979769845d60e12d07e",
+    "src/build/vue.ts": "6f0cc5bc8eb6edcc1095566afe39cab66c3f6685437442756c54e8cdacd41466",
     "src/index.html": "49437f61c0ac5cf1e8e808960b4820f20295621850725c1bbbf2d24e60c63643",
     "src/main.ts": "1440734ff5fd1697b54ce9cf30769aeb2c84ec5b4cee6520383b319b2107125a",
     "src/npm/install.ts": "0cdabb5c673cba785fec20fa03c88cac5cbee962e60f5a39ae04d652707fa834",
@@ -14,6 +14,6 @@
   "buildScript": "beb2fe5a0156dc9cdc2f6edfdab65b73a9fc776576a786b430532fd00eaa8045",
   "packageJson": "7d4bb3b9b916470980f616a4b58b8d03d72ee50ba94fc3907b8d6b527a27a573",
   "lockfile": "9af9d30074e2cce5eca0f7abb694dffab15200932c2005c7460572bd56db3369",
-  "bundle": "aea637bd4762f1e095b383a2bf22dadfd5ad8d516fac623656382f8c467da470",
+  "bundle": "3fd179a8005808a37f1080a50be2edf3cd7337855239aee783ff24ad4af5f06b",
   "vueCompiler": "ac3d43b2bc33e5b361930fd45838b6f989a4d3e0998db4c861a217c5722b0871"
 }
