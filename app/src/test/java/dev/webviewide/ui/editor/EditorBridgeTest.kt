@@ -24,6 +24,7 @@ class EditorBridgeTest {
 
     @Test fun kindKeysCoverAllSourceKinds() {
         assertEquals("html", EditorBridge.kindKey(SourceKind.HTML))
+        assertEquals("vue", EditorBridge.kindKey(SourceKind.VUE))
         assertEquals("css", EditorBridge.kindKey(SourceKind.CSS))
         assertEquals("js", EditorBridge.kindKey(SourceKind.JS))
         assertEquals("json", EditorBridge.kindKey(SourceKind.JSON))

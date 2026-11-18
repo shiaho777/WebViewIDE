@@ -12,6 +12,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ProjectLogicTest {
+    @Test fun sourceKindMapsVueToSfcKind() {
+        assertEquals(SourceKind.VUE, sourceKindFor("App.vue"))
+        assertEquals(SourceKind.HTML, sourceKindFor("index.html"))
+        assertEquals(SourceKind.JS, sourceKindFor("main.ts"))
+        assertEquals(SourceKind.CSS, sourceKindFor("styles.css"))
+    }
+
     @Test fun jsonRoundTripKeepsValues() {
         val text = encodeJson(
             mapOf(

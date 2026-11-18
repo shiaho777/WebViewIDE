@@ -23,6 +23,7 @@ fun tokenize(code: String, kind: SourceKind): List<Tok> = when (kind) {
     SourceKind.CSS -> scanCss(code, 0, code.length)
     SourceKind.JSON -> scanJson(code)
     SourceKind.HTML -> scanHtml(code)
+    SourceKind.VUE -> scanHtml(code)
 }
 
 private fun scanHtml(code: String): List<Tok> {

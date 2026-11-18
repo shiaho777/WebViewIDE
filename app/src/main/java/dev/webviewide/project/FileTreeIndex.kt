@@ -25,7 +25,8 @@ object FileTreeIndex {
 }
 
 fun sourceKindFor(name: String): SourceKind = when (name.substringAfterLast('.', "").lowercase()) {
-    "html", "htm", "xml", "svg", "vue" -> SourceKind.HTML
+    "html", "htm", "xml", "svg" -> SourceKind.HTML
+    "vue" -> SourceKind.VUE
     "css" -> SourceKind.CSS
     "js", "mjs", "cjs", "jsx", "ts", "tsx" -> SourceKind.JS
     "json", "webmanifest" -> SourceKind.JSON
@@ -36,4 +37,4 @@ fun isRasterImage(name: String): Boolean = name.substringAfterLast('.', "").lowe
     "png", "jpg", "jpeg", "gif", "webp", "bmp",
 )
 
-enum class SourceKind { HTML, CSS, JS, JSON, PLAIN }
+enum class SourceKind { HTML, VUE, CSS, JS, JSON, PLAIN }
