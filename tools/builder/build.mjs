@@ -22,6 +22,21 @@ await build({
   logLevel: "info",
 });
 
+// Vue SFC compiler: the official self-contained browser ESM bundle, minified
+// into an IIFE global so the file:// build page can load it as a classic script
+// (dynamic ESM import is unreliable on WebView file:// origins).
+await build({
+  entryPoints: [join(here, "node_modules/@vue/compiler-sfc/dist/compiler-sfc.esm-browser.js")],
+  bundle: true,
+  minify: true,
+  format: "iife",
+  globalName: "VueCompilerSFC",
+  target: ["chrome90"],
+  outfile: join(outDir, "vue-compiler.js"),
+  legalComments: "none",
+  logLevel: "info",
+});
+
 await copyFile(join(here, "src/index.html"), join(outDir, "index.html"));
 
 async function* walk(dir) {
@@ -44,6 +59,7 @@ const manifest = {
   packageJson: sha(await readFile(join(here, "package.json"))),
   lockfile: sha(await readFile(join(here, "package-lock.json"))),
   bundle: sha(await readFile(join(outDir, "builder.bundle.js"))),
+  vueCompiler: sha(await readFile(join(outDir, "vue-compiler.js"))),
 };
 await writeFile(join(outDir, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");
 console.log("manifest.json written");

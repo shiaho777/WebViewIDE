@@ -3,6 +3,7 @@
 import { install, type NetClient } from "./npm/install";
 import { MemFs } from "./npm/memfs";
 import { ensureEsbuild, buildProject } from "./build/esbuild";
+import { ensureVueCompiler } from "./build/vue";
 
 declare global {
   interface Window {
@@ -179,6 +180,11 @@ async function runBuild(id: number): Promise<void> {
   if (!entry) {
     post("done", { ok: false, summary: "找不到入口（src/main.* 或 index.js）" }, id);
     return;
+  }
+  // Vue SFC projects need the compiler asset; load it before bundling.
+  if (fs.list("src").some((p) => p.endsWith(".vue"))) {
+    log.progress(0.3, "加载 Vue 编译器");
+    await ensureVueCompiler();
   }
   log.progress(0.4, "esbuild 打包（TS/JSX 仅转译，不做类型检查）");
   await ensureEsbuild(wasmUrl);

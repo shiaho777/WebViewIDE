@@ -2,16 +2,18 @@
   "generator": "tools/builder/build.mjs",
   "sources": {
     "src/build/esbuild.ts": "5055cf2a68e9c3830df0b36c8f9c0b0106dc75b5a1c7ecde6ac872a980288dc2",
+    "src/build/vue.ts": "3dc74bc47433aa76036693ee7c9e668dd167638a843e518a74e1a869d748565b",
     "src/index.html": "49437f61c0ac5cf1e8e808960b4820f20295621850725c1bbbf2d24e60c63643",
-    "src/main.ts": "5d9db8e19308bea8ce14d484c158836032e71b832fe94b2e2f28a6bf4ec74bfc",
+    "src/main.ts": "1440734ff5fd1697b54ce9cf30769aeb2c84ec5b4cee6520383b319b2107125a",
     "src/npm/install.ts": "0cdabb5c673cba785fec20fa03c88cac5cbee962e60f5a39ae04d652707fa834",
     "src/npm/memfs.ts": "b9374d3575b6ba2d50431d1a2683d293817d6e4ffe45dfb95dd32f7323d0642b",
     "src/npm/native.ts": "b4a4bcea1e240e0f427e004849d7758c821181cfab2f9bf343ccfb5cbc045c58",
     "src/npm/semver.ts": "674b16d899db4b8bb44204b0b0bf7826e26a3d212e7253782e3cf9be1539de11",
     "src/npm/tar.ts": "d7a55f0ec65187e673078e0ab61040864863bc336cb16a320d1077c984128154"
   },
-  "buildScript": "d59e86deb876bae0330e3fac2a308ca86fb33b5ce02ee23dbf1fcb38a2b5b78f",
-  "packageJson": "3f0c1a49dd94b620698a02679c89360f2e2f0d771ce423ec83ee0edd39f6b053",
-  "lockfile": "c136a975373502228e28326547847f40c70b319fd32ce83344e982ea6cac0869",
-  "bundle": "02175068af67234650375be13b9b22a5703e9f5f517fac03adbb40d8bdd8e041"
+  "buildScript": "beb2fe5a0156dc9cdc2f6edfdab65b73a9fc776576a786b430532fd00eaa8045",
+  "packageJson": "7d4bb3b9b916470980f616a4b58b8d03d72ee50ba94fc3907b8d6b527a27a573",
+  "lockfile": "9af9d30074e2cce5eca0f7abb694dffab15200932c2005c7460572bd56db3369",
+  "bundle": "aea637bd4762f1e095b383a2bf22dadfd5ad8d516fac623656382f8c467da470",
+  "vueCompiler": "ac3d43b2bc33e5b361930fd45838b6f989a4d3e0998db4c861a217c5722b0871"
 }
