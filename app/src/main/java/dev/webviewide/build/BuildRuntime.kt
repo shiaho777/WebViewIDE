@@ -3,8 +3,10 @@ package dev.webviewide.build
 import android.annotation.SuppressLint
 import android.webkit.JavascriptInterface
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.webkit.WebViewAssetLoader
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -63,7 +65,15 @@ fun BuildRuntime(
                             }
                         }
                     }, "WviBuild")
+                    // Serve our bundle + cached wasm over https so esbuild's
+                    // fetch(wasmURL) is same-origin (file:// is CORS-blocked).
+                    val loader = WebViewAssetLoader.Builder()
+                        .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(context))
+                        .addPathHandler("/files/", WebViewAssetLoader.InternalStoragePathHandler(context, context.filesDir))
+                        .build()
                     webViewClient = object : WebViewClient() {
+                        override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? =
+                            request?.url?.let { loader.shouldInterceptRequest(it) }
                         override fun onRenderProcessGone(view: WebView?, detail: android.webkit.RenderProcessGoneDetail?): Boolean {
                             webRef[0] = null
                             ready = false
@@ -75,7 +85,7 @@ fun BuildRuntime(
                     }
                     webRef[0] = this
                     onHandle(BuildHandle(this))
-                    loadUrl("file:///android_asset/builder/index.html")
+                    loadUrl("https://appassets.androidplatform.net/assets/builder/index.html")
                 }
             },
         )

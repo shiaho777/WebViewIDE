@@ -23,9 +23,13 @@ class BuildController(
 
     fun wasmFile(): File = File(filesDir, "esbuild/$ESBUILD_VERSION/esbuild.wasm")
 
+    // https URL served by BuildRuntime's WebViewAssetLoader (same-origin fetch).
+    private fun wasmHttpsUrl(): String =
+        "https://appassets.androidplatform.net/files/esbuild/$ESBUILD_VERSION/esbuild.wasm"
+
     private fun ensureWasm(): String? {
         val f = wasmFile()
-        if (f.isFile && f.length() > 1_000_000) return "file://" + f.absolutePath
+        if (f.isFile && f.length() > 1_000_000) return wasmHttpsUrl()
         return runCatching {
             val result = BuildNet.fetch(WASM_URL)
             if (result.status !in 200..299) return null
@@ -33,7 +37,7 @@ class BuildController(
             val tmp = File(f.parentFile, ".esbuild.wasm.tmp")
             tmp.writeBytes(result.body)
             if (!tmp.renameTo(f)) { tmp.copyTo(f, overwrite = true); tmp.delete() }
-            "file://" + f.absolutePath
+            wasmHttpsUrl()
         }.getOrNull()
     }
 
