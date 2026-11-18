@@ -14,6 +14,7 @@
     "fflate": "^0.8.2"
   },
   "devDependencies": {
+    "@vue/compiler-sfc": "3.5.45",
     "esbuild": "^0.25.0",
     "typescript": "^5.8.0"
   }

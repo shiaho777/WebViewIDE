@@ -32,6 +32,7 @@ for (const [key, path] of [
   ["packageJson", join(here, "package.json")],
   ["lockfile", join(here, "package-lock.json")],
   ["bundle", join(outDir, "builder.bundle.js")],
+  ["vueCompiler", join(outDir, "vue-compiler.js")],
 ]) {
   if (sha(await readFile(path)) !== manifest[key]) problems.push(`${key} hash differs from manifest.json`);
 }
