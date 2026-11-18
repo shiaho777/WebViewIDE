@@ -118,8 +118,10 @@ export async function buildProject(fs: MemFs, entry: string): Promise<BuildOutpu
     },
     logLevel: "silent",
   });
+  // esbuild-wasm reports "/dist/main.js" (leading slash) while node esbuild
+  // reports "dist/main.js"; strip either so main.ts's "dist/" prefix is single.
   return (result.outputFiles ?? []).map((f) => ({
-    path: f.path.replace(/^dist\//, ""),
+    path: f.path.replace(/^\/?dist\//, ""),
     contents: f.contents,
   }));
 }
