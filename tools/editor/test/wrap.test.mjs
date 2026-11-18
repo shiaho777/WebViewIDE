@@ -54,6 +54,10 @@ test("symbol-bar inserts route through input handlers so auto-close runs", () =>
   assert.ok(/userEvent: "input\.type"/.test(source), "fallback insert must be tagged as typing");
 });
 
+test("JS mode enables TypeScript + JSX so .ts/.tsx highlight", () => {
+  assert.ok(/javascript\(\{ typescript: true, jsx: true \}\)/.test(source), "js kind must enable ts+jsx");
+});
+
 test("match highlighting is provided without the built-in panel", () => {
   assert.ok(source.includes("getSearchQuery"), "must read the active query");
   assert.ok(source.includes("cm-searchMatch"), "must decorate matches");

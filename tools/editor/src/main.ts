@@ -82,7 +82,8 @@ function languageFor(kind: string) {
     case "css":
       return css();
     case "js":
-      return javascript();
+      // .ts/.tsx map to the JS kind; enable TS + JSX so types highlight.
+      return javascript({ typescript: true, jsx: true });
     case "json":
       return json();
     default:
