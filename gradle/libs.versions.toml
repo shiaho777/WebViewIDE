@@ -6,7 +6,7 @@ lifecycle = "2.8.7"
 activityCompose = "1.9.3"
 composeBom = "2026.09.00"
 webkit = "1.14.0"
-coreSplashscreen = "1.0.1"
+coreSplashscreen = "1.2.0"
 # JGit 6.x uses InputStream.readNBytes (API 33+); 5.13.x is the Java 8 line that runs on minSdk 26.
 jgit = "5.13.5.202508271544-r"
 slf4j = "1.7.36"
